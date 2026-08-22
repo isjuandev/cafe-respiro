@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 export function Header() {
   const pathname = usePathname();
+  if (pathname.startsWith("/admin")) return null;
   const isActive = (href: string) => pathname === href || (href === "/sugerencias" && pathname.startsWith("/sugerencias"));
 
   const linkClass = (href: string) =>
