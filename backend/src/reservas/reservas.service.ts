@@ -21,13 +21,16 @@ export class ReservasService {
       // Lock pesimista de la fila Funcion — Read Committed es suficiente.
       // Cualquier otra transacción que intente reservar la misma función
       // se bloquea aquí hasta que esta termine, evitando overbooking.
-      const rows = await tx.$queryRaw<Array<{ id: string; cupoTotal: number }>>`
-        SELECT id, "cupoTotal" FROM "Funcion" WHERE id = ${funcionId} FOR UPDATE
+      const rows = await tx.$queryRaw<Array<{ id: string; cupoTotal: number; fechaHora: Date }>>`
+        SELECT id, "cupoTotal", "fechaHora" FROM "Funcion" WHERE id = ${funcionId} FOR UPDATE
       `;
       if (rows.length === 0) {
         throw new NotFoundException('Función no encontrada');
       }
       const cupoTotal = rows[0].cupoTotal;
+      if (new Date(rows[0].fechaHora) <= new Date()) {
+        throw new ConflictException('No se puede reservar una función pasada');
+      }
 
       // Suma de cupos ya ocupados dentro de la misma transacción
       const agg = await tx.reserva.aggregate({

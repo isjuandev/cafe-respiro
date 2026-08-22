@@ -1,4 +1,4 @@
-# Backend Dockerfile - NestJS + Prisma (multi-stage)
+# Backend Dockerfile - NestJS + Prisma (multi-stage, prod)
 FROM node:20-alpine AS base
 RUN corepack enable && corepack prepare pnpm@10.29.3 --activate
 WORKDIR /app
@@ -20,6 +20,7 @@ FROM node:20-alpine AS runner
 RUN corepack enable && corepack prepare pnpm@10.29.3 --activate
 WORKDIR /app
 ENV NODE_ENV=production
+# Copia workspace y deps (incluye dev para prisma migrate; optimización futura: pnpm prune --prod y mover prisma a dependencies)
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
 COPY --from=builder /app/pnpm-lock.yaml ./pnpm-lock.yaml
@@ -30,4 +31,6 @@ COPY --from=builder /app/backend/prisma ./backend/prisma
 COPY --from=builder /app/backend/package.json ./backend/package.json
 WORKDIR /app/backend
 EXPOSE 3001
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD wget -qO- http://localhost:3001/api/health || exit 1
+# Migraciones como parte del arranque (idempotente, sin paso manual)
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main.js"]

@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Param, Body, UseGuards, NotFoundException, ConflictException, Logger } from '@nestjs/common';
+import { Controller, Post, Get, Param, Body, UseGuards, NotFoundException, ConflictException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdminGuard } from '../common/guards/admin.guard';
 import { CreateFuncionDto } from './dto/create-funcion.dto';
@@ -36,7 +36,8 @@ export class AdminFuncionesController {
     }
 
     const fechaHora = new Date(dto.fechaHora);
-    if (isNaN(fechaHora.getTime())) throw new ConflictException('fechaHora inválida');
+    if (isNaN(fechaHora.getTime())) throw new BadRequestException('fechaHora inválida');
+    if (fechaHora <= new Date()) throw new BadRequestException('fechaHora debe ser futura');
 
     try {
       const funcion = await this.prisma.funcion.create({
