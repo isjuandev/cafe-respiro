@@ -1,6 +1,8 @@
 # Café Respiro — Cine-Café
 
-MVP donde clientes sugieren películas, votan y reservan cupo para funciones. **Sprint 1: cartelera pública + sugerencia de películas** (Sprint 0: infra completa).
+MVP donde clientes sugieren películas, votan y reservan cupo para funciones. **Fase 1 completa (Sprints 0-3) + Sprint 4 QA / Docker prod / Coolify** — sin features nuevas, solo empaquetado y despliegue.
+
+> Despliegue en Coolify: ver **[COOLIFY.md](./COOLIFY.md)** (paso a paso + smoke checklist). Sprint 0: infra, Sprint 1: cartelera+sugerencias, Sprint 2: voto+reserva, Sprint 3: admin+notificaciones stub.
 
 Stack: **Monorepo pnpm** · **NestJS + Prisma + PostgreSQL** · **Next.js (App Router) + Tailwind + shadcn/ui** · **Docker Compose** · Listo para **Coolify**.
 
@@ -85,36 +87,41 @@ Variables: `backend/.env` → `DATABASE_URL`, frontend usa `BACKEND_URL` (ver `.
 
 ```
 .
-├── docker-compose.yml
+├── docker-compose.yml           # ref local; en Coolify se crean 3 servicios separados (ver COOLIFY.md)
 ├── pnpm-workspace.yaml
-├── .env.example
+├── .env.example                 # incluye ADMIN_*/JWT_*/BACKEND_URL
+├── COOLIFY.md                   # guía despliegue + smoke checklist
 ├── backend/
 │   ├── src/
-│   │   ├── main.ts              # prefijo /api, CORS, ValidationPipe
+│   │   ├── main.ts              # prefijo /api, CORS, ValidationPipe, cookieParser
 │   │   ├── app.module.ts
 │   │   ├── app.controller.ts    # GET /api/health
 │   │   ├── prisma/              # PrismaService (global)
 │   │   ├── common/utils/normalize.ts # normalizeTitulo / normalizeContacto
-│   │   ├── sugerencias/         # GET /api/sugerencias, POST /api/sugerencias (duplicado con índice parcial)
-│   │   ├── funciones/           # GET /api/funciones (cartelera con cuposDisponibles)
-│   │   ├── peliculas/           # reservado
-│   │   ├── votos/               # Sprint 2
-│   │   └── reservas/            # Sprint 2
+│   │   ├── common/guards/admin.guard.ts # cookie httpOnly + Bearer
+│   │   ├── sugerencias/         # GET /api/sugerencias (ranking), POST /api/sugerencias
+│   │   ├── funciones/           # GET /api/funciones (cuposDisponibles)
+│   │   ├── votos/               # POST /api/sugerencias/:id/votos (Sprint 2)
+│   │   ├── reservas/            # POST /api/funciones/:id/reservas (FOR UPDATE)
+│   │   ├── admin/               # login + GET/PATCH sugerencias + POST funciones + GET reservas
+│   │   └── notifications/       # NotificationsService stub + NotificationLog
 │   ├── prisma/
-│   │   ├── schema.prisma        # Pelicula, Sugerencia (con estado + tituloNormalizado), Voto, Funcion, Reserva
-│   │   ├── migrations/          # 20260822071141_init (con índice parcial único)
+│   │   ├── schema.prisma        # Pelicula, Sugerencia (estado+tituloNormalizado), Voto, Funcion, Reserva, NotificationLog
+│   │   ├── migrations/          # 20260822071141_init (parcial) + 20260822091123_add_notification_log
 │   │   └── seed.ts              # 3 pelis + 3 funciones + 1 sugerencia
-│   └── Dockerfile               # multi-stage, prisma migrate deploy + node dist/src/main.js
+│   └── Dockerfile               # multi-stage prod, HEALTHCHECK, migrate deploy + dist/src/main.js
 └── frontend/
     ├── app/
-    │   ├── layout.tsx           # header nav Cartelera | Sugerencias
-    │   ├── page.tsx             # / cartelera (funciones programadas)
-    │   ├── sugerencias/page.tsx # /sugerencias lista + formulario
+    │   ├── layout.tsx           # header nav Cartelera | Sugerencias | Admin
+    │   ├── page.tsx             # / cartelera (reserva con cupo)
+    │   ├── sugerencias/page.tsx # /sugerencias lista ranking + voto + form
+    │   ├── admin/login/page.tsx # /admin/login
+    │   ├── admin/page.tsx       # /admin panel (estados, crear función, reservas)
     │   └── globals.css          # tailwind + shadcn css variables
     ├── components/ui/button.tsx # shadcn/ui
     ├── lib/utils.ts             # cn() + apiFetch (usa /api relativo)
-    ├── next.config.mjs          # rewrites /api -> BACKEND_URL
-    └── Dockerfile               # multi-stage, pnpm build + pnpm start
+    ├── next.config.mjs          # rewrites /api -> BACKEND_URL (bakeado, requiere rebuild si cambia)
+    └── Dockerfile               # multi-stage prod, HEALTHCHECK, ARG BACKEND_URL bakeado
 ```
 
 ## Modelo de datos (Prisma)
@@ -168,15 +175,15 @@ BACKEND_URL=http://backend:3001
 
 **Coolify:** configurar las mismas vars en la UI por servicio (no subir `.env`). `BACKEND_URL` se inyecta en el servicio frontend (ej. `http://caferespiro-backend:3001`) y `DATABASE_URL` en backend con el host interno de Postgres. No requiere `NEXT_PUBLIC_API_URL`.
 
-## Docker
+## Docker (prod)
 
-- `backend/Dockerfile`: base `node:20-alpine` + `pnpm`, deps cacheado, `prisma generate`, `nest build`, runner ejecuta `npx prisma migrate deploy && node dist/src/main.js` con healthcheck `wget /api/health`.
-- `frontend/Dockerfile`: base `node:20-alpine` + `pnpm`, deps cacheado, `next build`, runner `pnpm start` (port 3000). `BACKEND_URL` como `ARG`/`ENV` en runtime para rewrites.
-- `docker-compose.yml`: `postgres:16-alpine` con healthcheck `pg_isready`, `backend` depends_on postgres healthy, `frontend` depends_on backend healthy (con `BACKEND_URL=http://backend:3001`). Volúmenes: `postgres_data`.
+- `backend/Dockerfile`: `node:20-alpine` multi-stage, `prisma generate` + `nest build`, runner con `HEALTHCHECK` `wget /api/health` y `CMD npx prisma migrate deploy && node dist/src/main.js` (migrate como parte del arranque, idempotente). Nota: runner incluye dev deps para `prisma` CLI (optimizable a `prune --prod` moviendo `prisma` a dependencies).
+- `frontend/Dockerfile`: `node:20-alpine` multi-stage, `HEALTHCHECK` `wget /api/health`, `ARG BACKEND_URL` **bakeado en build** (`next.config.mjs` rewrites). Cambiar `BACKEND_URL` en Coolify requiere **Rebuild** (limitación Next, documentada en `COOLIFY.md`).
+- `docker-compose.yml`: `postgres:16-alpine` + `pg_isready`, `backend` `depends_on postgres healthy`, `frontend` `depends_on backend healthy` con `BACKEND_URL=http://backend:3001`. Es referencia local; en Coolify se crean 3 servicios separados.
 
 ## Coolify
 
-Este repo está listo para deploy en Coolify a partir de los Dockerfiles. Crear 3 servicios: Postgres, Backend (Dockerfile `backend/Dockerfile`), Frontend (Dockerfile `frontend/Dockerfile`). Mapear env vars y exponer puertos 3001/3000. El proxy `/api` evita rebuild del frontend al cambiar la URL del backend.
+Guía completa en **[COOLIFY.md](./COOLIFY.md)**: conectar repo, 3 servicios, env `DATABASE_URL`/`ADMIN_*`/`JWT_SECRET`/`BACKEND_URL`, healthchecks `/api/health`, dominio + Let's Encrypt, orden de deploy y smoke checklist. El proxy `/api` evita exponer backend directo, pero `BACKEND_URL` bakeado implica rebuild al cambiar host interno.
 
 ## Scripts raíz
 
