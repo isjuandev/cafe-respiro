@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Pelicula {
+  id          String   @id @default(cuid())
+  titulo      String
+  director    String?
+  anio        Int?
+  duracionMin Int?
+  sinopsis    String?  @db.Text
+  posterUrl   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  funciones   Funcion[]
+  sugerencias Sugerencia[]
+
+  @@index([titulo])
+}
+
+model Sugerencia {
+  id                String   @id @default(cuid())
+  titulo            String
+  director          String?
+  anio              Int?
+  comentario        String?  @db.Text
+  nombreSolicitante String
+  contacto          String
+  peliculaId        String?
+  pelicula          Pelicula? @relation(fields: [peliculaId], references: [id], onDelete: SetNull)
+  votos             Voto[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([peliculaId])
+}
+
+model Voto {
+  id            String     @id @default(cuid())
+  sugerenciaId  String
+  sugerencia    Sugerencia @relation(fields: [sugerenciaId], references: [id], onDelete: Cascade)
+  nombreVotante String
+  contacto      String
+  createdAt     DateTime   @default(now())
+
+  @@unique([sugerenciaId, contacto])
+  @@index([sugerenciaId])
+}
+
+model Funcion {
+  id         String   @id @default(cuid())
+  peliculaId String
+  pelicula   Pelicula @relation(fields: [peliculaId], references: [id], onDelete: Cascade)
+  fechaHora  DateTime // único campo DateTime: fecha + hora en una sola columna, fácil de ordenar/comparar
+  cupoTotal  Int
+  reservas   Reserva[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([peliculaId, fechaHora])
+  @@index([peliculaId])
+  @@index([fechaHora])
+}
+
+model Reserva {
+  id        String   @id @default(cuid())
+  funcionId String
+  funcion   Funcion  @relation(fields: [funcionId], references: [id], onDelete: Cascade)
+  nombre    String
+  contacto  String
+  cantidad  Int      @default(1)
+  createdAt DateTime @default(now())
+
+  @@unique([funcionId, contacto])
+  @@index([funcionId])
+}

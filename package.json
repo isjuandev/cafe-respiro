@@ -1,0 +1,21 @@
+{
+  "name": "cafe-respiro",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Cine-Café Café Respiro - MVP Sprint 0",
+  "packageManager": "pnpm@10.29.3",
+  "scripts": {
+    "dev:backend": "pnpm --filter backend dev",
+    "dev:frontend": "pnpm --filter frontend dev",
+    "build": "pnpm -r build",
+    "db:generate": "pnpm --filter backend prisma:generate",
+    "db:migrate": "pnpm --filter backend prisma:migrate",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}
