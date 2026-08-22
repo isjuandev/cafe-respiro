@@ -92,3 +92,14 @@ model Reserva {
   @@unique([funcionId, contacto])
   @@index([funcionId])
 }
+
+model NotificationLog {
+  id          String   @id @default(cuid())
+  tipo        String // SUGERENCIA_PROGRAMADA | RESERVA_CONFIRMADA
+  destinatario String? // contacto si aplica
+  payload     Json
+  createdAt   DateTime @default(now())
+
+  @@index([tipo])
+  @@index([createdAt])
+}

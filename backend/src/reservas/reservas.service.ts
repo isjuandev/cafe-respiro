@@ -1,18 +1,23 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateReservaDto } from './dto/create-reserva.dto';
 import { normalizeContacto } from '../common/utils/normalize';
 import { Prisma } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class ReservasService {
-  constructor(private prisma: PrismaService) {}
+  private logger = new Logger(ReservasService.name);
+  constructor(
+    private prisma: PrismaService,
+    private notifications: NotificationsService,
+  ) {}
 
   async reservar(funcionId: string, dto: CreateReservaDto) {
     const contactoNormalizado = normalizeContacto(dto.contacto);
     const cantidad = dto.cantidad;
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       // Lock pesimista de la fila Funcion — Read Committed es suficiente.
       // Cualquier otra transacción que intente reservar la misma función
       // se bloquea aquí hasta que esta termine, evitando overbooking.
@@ -60,5 +65,16 @@ export class ReservasService {
         throw error;
       }
     });
+
+    // Notify post-commit con cliente global (nunca con tx), no bloquea respuesta
+    const funcion = await this.prisma.funcion.findUnique({
+      where: { id: funcionId },
+      include: { pelicula: true },
+    });
+    this.notifications
+      .notifyReservaConfirmada(result.reserva, funcion)
+      .catch((e) => this.logger.warn(`notifyReservaConfirmada falló: ${e}`));
+
+    return result;
   }
 }
