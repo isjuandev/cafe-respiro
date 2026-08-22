@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { FaFilm, FaLightbulb, FaUsers, FaCalendarAlt, FaClock, FaHeart, FaRegHeart, FaArrowRight, FaWhatsapp } from "react-icons/fa";
 
 type Sugerencia = {
   id: string;
@@ -185,7 +186,7 @@ export default function VotarPage() {
                 <span className="text-[#E8B86A]">▦</span> VOTACIÓN ACTIVA
               </h2>
               <span className="flex items-center gap-1.5 text-xs text-[#E8B86A]">
-                <span>◷</span> Cierre de votación: 2 días 14 horas
+                <FaClock /> Cierre de votación: 2 días 14 horas
               </span>
             </div>
 
@@ -240,7 +241,7 @@ export default function VotarPage() {
                         disabled={yaVoto || votoLoading[s.id]}
                         className={`flex h-10 w-10 items-center justify-center rounded-full border transition-colors ${yaVoto ? "border-[#E8B86A] bg-[#E8B86A] text-black" : "border-white/20 text-white hover:border-[#E8B86A] hover:text-[#E8B86A]"}`}
                       >
-                        {yaVoto ? "♥" : votoLoading[s.id] ? "…" : "♡"}
+                        {yaVoto ? <FaHeart className="text-sm" /> : votoLoading[s.id] ? "…" : <FaRegHeart className="text-sm" />}
                       </button>
                       {isVotando && !yaVoto && (
                         <div className="w-40 rounded-lg border border-white/10 bg-black p-2">
@@ -287,7 +288,7 @@ export default function VotarPage() {
           <div className="space-y-4">
             <div className="rounded-2xl border border-white/10 bg-[#141414] p-5">
               <h3 className="flex items-center gap-2 text-xs font-bold tracking-[0.15em] text-white">
-                <span>🎬</span> CÓMO FUNCIONA
+                <FaFilm className="text-[#E8B86A]" /> CÓMO FUNCIONA
               </h3>
               <div className="mt-4 space-y-3">
                 <div className="flex gap-3">
@@ -296,8 +297,8 @@ export default function VotarPage() {
                 </div>
                 <div className="flex gap-3">
                   <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border border-[#E8B86A]/50 text-xs font-bold text-[#E8B86A]">2</span>
-                  <p className="text-xs leading-relaxed text-white/70">
-                    Dale <span className="text-[#E8B86A]">♥</span> a la película que quieres ver.
+                  <p className="flex items-center gap-1 text-xs leading-relaxed text-white/70">
+                    Dale <FaHeart className="text-[#E8B86A] text-xs" /> a la película que quieres ver.
                   </p>
                 </div>
                 <div className="flex gap-3">
@@ -307,7 +308,7 @@ export default function VotarPage() {
               </div>
               <div className="mt-4 rounded-lg bg-[#E8B86A]/10 p-3">
                 <p className="flex items-center gap-2 text-xs text-[#E8B86A]">
-                  <span>💡</span> Puedes votar todas las veces que quieras.
+                  <FaLightbulb className="text-[#E8B86A]" /> Puedes votar todas las veces que quieras.
                 </p>
               </div>
             </div>
@@ -320,7 +321,7 @@ export default function VotarPage() {
                     <span className="text-white/50">{idx + 1}.</span>
                     <span className="flex-1 px-2 text-white/80 truncate">{s.titulo}</span>
                     <span className="font-bold text-white">{s._count?.votos || 0}</span>
-                    <span className="ml-1 text-[#E8B86A] text-[10px]">♥</span>
+                    <FaHeart className="ml-1 text-[#E8B86A] text-[10px]" />
                   </div>
                 ))}
                 {top5.length === 0 && <p className="text-xs text-white/40">Sin votos aún</p>}
@@ -351,30 +352,30 @@ export default function VotarPage() {
           </div>
           <div className="flex flex-wrap items-center gap-6 text-xs">
             <div className="text-center">
-              <div className="flex items-center gap-1 text-white/50">
-                <span>📅</span> FECHA
+              <div className="flex items-center justify-center gap-1 text-white/50">
+                <FaCalendarAlt className="text-xs" /> FECHA
               </div>
               <div className="mt-1 font-medium text-white">
                 {proximaFuncion ? new Date(proximaFuncion.fechaHora).toLocaleDateString("es-UY", { weekday: "long", day: "numeric", month: "long" }) : "Viernes 30 de mayo"}
               </div>
             </div>
             <div className="text-center">
-              <div className="flex items-center gap-1 text-white/50">
-                <span>🕒</span> HORA
+              <div className="flex items-center justify-center gap-1 text-white/50">
+                <FaClock className="text-xs" /> HORA
               </div>
               <div className="mt-1 font-medium text-white">
                 {proximaFuncion ? new Date(proximaFuncion.fechaHora).toLocaleTimeString("es-UY", { hour: "2-digit", minute: "2-digit" }) : "7:00 PM"}
               </div>
             </div>
             <div className="text-center">
-              <div className="flex items-center gap-1 text-white/50">
-                <span>👥</span> CUPOS DISPONIBLES
+              <div className="flex items-center justify-center gap-1 text-white/50">
+                <FaUsers className="text-xs" /> CUPOS DISPONIBLES
               </div>
               <div className="mt-1 font-medium text-white">{proximaFuncion ? `${proximaFuncion.cuposDisponibles} / ${proximaFuncion.cupoTotal}` : "8 / 8"}</div>
             </div>
           </div>
           <Link href="/" className="inline-flex items-center gap-2 rounded-lg bg-[#E8B86A] px-6 py-3 text-xs font-bold tracking-wide text-black hover:bg-[#D4A574]">
-            RESERVAR CUPO <span>→</span>
+            RESERVAR CUPO <FaArrowRight className="text-xs" />
           </Link>
         </div>
 
@@ -382,7 +383,7 @@ export default function VotarPage() {
           <div className="flex items-center gap-6">
             <span>Calle 42 #10-25, Armenia, Colombia</span>
             <span className="flex items-center gap-1">
-              <span className="text-[#25D366]">◉</span> 300 123 4567
+              <FaWhatsapp className="text-[#25D366]" /> 300 123 4567
             </span>
           </div>
           <div className="flex items-center gap-4">

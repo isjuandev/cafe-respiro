@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { FaFilm, FaCalendarAlt, FaTicketAlt, FaChartBar, FaLightbulb, FaUsers, FaClock, FaCog, FaLock, FaHome, FaSignOutAlt, FaStar, FaArrowUp } from "react-icons/fa";
 
 type Sugerencia = {
   id: string;
@@ -211,31 +212,31 @@ export default function AdminPage() {
 
         <nav className="flex-1 space-y-1 p-3">
           <Link href="/admin" className="flex items-center gap-3 rounded-lg bg-[#E8B86A]/20 px-3 py-2.5 text-sm font-medium text-[#E8B86A]">
-            <span>⌂</span> Dashboard
+            <FaHome className="text-sm" /> Dashboard
           </Link>
           <div className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-white/40">
-            <span>🎬</span> Películas <span className="ml-auto text-xs opacity-0">›</span>
+            <FaFilm className="text-white/40" /> Películas <span className="ml-auto text-xs opacity-0">›</span>
           </div>
           <Link href="/admin" className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-white/70 hover:bg-white/5 hover:text-white">
-            <span>🗓️</span> Funciones
+            <FaCalendarAlt className="text-white/70" /> Funciones
           </Link>
           <Link href="/admin" className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-white/70 hover:bg-white/5 hover:text-white">
-            <span>🎟️</span> Reservas
+            <FaTicketAlt className="text-white/70" /> Reservas
           </Link>
           <Link href="/sugerencias" className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-white/70 hover:bg-white/5 hover:text-white">
-            <span>📊</span> Votaciones
+            <FaChartBar className="text-white/70" /> Votaciones
           </Link>
           <Link href="/admin" className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-white/70 hover:bg-white/5 hover:text-white">
-            <span>💡</span> Sugerencias
+            <FaLightbulb className="text-white/70" /> Sugerencias
           </Link>
           <div className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-white/20">
-            <span>👥</span> Clientes
+            <FaUsers className="text-white/20" /> Clientes
           </div>
           <div className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-white/20">
-            <span>◷</span> Reportes
+            <FaClock className="text-white/20" /> Reportes
           </div>
           <div className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-white/20">
-            <span>⚙️</span> Configuración
+            <FaCog className="text-white/20" /> Configuración
           </div>
         </nav>
 
@@ -249,7 +250,7 @@ export default function AdminPage() {
             <span className="text-white/20">›</span>
           </div>
           <button onClick={logout} className="mt-3 flex w-full items-center gap-2 px-3 py-2 text-xs text-white/40 hover:text-white">
-            <span>↩</span> Cerrar sesión
+            <FaSignOutAlt /> Cerrar sesión
           </button>
         </div>
       </aside>
@@ -263,10 +264,10 @@ export default function AdminPage() {
           </div>
           <div className="flex items-center gap-3">
             <div className="hidden items-center gap-2 text-xs text-white/60 sm:flex">
-              <span>📅</span> Martes, 27 de mayo de 2025
+              <FaCalendarAlt /> Martes, 27 de mayo de 2025
             </div>
             <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/70">
-              <span>📅</span> Hoy
+              <FaCalendarAlt /> Hoy
             </div>
           </div>
         </header>
@@ -276,29 +277,35 @@ export default function AdminPage() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <div className="rounded-xl border border-white/10 bg-[#141414] p-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#E8B86A]/15 text-[#E8B86A]">🎟️</div>
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#E8B86A]/15 text-[#E8B86A]">
+                  <FaTicketAlt />
+                </div>
                 <span className="text-xs text-white/60">Reservas para hoy</span>
               </div>
               <div className="mt-3 text-2xl font-bold text-white">
                 {ocupados} <span className="text-white/40">/ {totalCupos}</span>
               </div>
               <div className="mt-1 flex items-center gap-1 text-xs text-white/40">
-                cupos ocupados <span className="ml-auto text-[#6B8E6B]">↗</span>
+                cupos ocupados <span className="ml-auto text-[#6B8E6B]"><FaArrowUp className="text-xs" /></span>
               </div>
             </div>
             <div className="rounded-xl border border-white/10 bg-[#141414] p-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#E8B86A]/15 text-[#E8B86A]">👥</div>
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#E8B86A]/15 text-[#E8B86A]">
+                  <FaUsers />
+                </div>
                 <span className="text-xs text-white/60">Disponibles</span>
               </div>
               <div className="mt-3 text-2xl font-bold text-white">{disponibles}</div>
               <div className="mt-1 flex items-center gap-1 text-xs text-white/40">
-                cupos libres <span className="ml-auto text-[#6B8E6B]">↗</span>
+                cupos libres <span className="ml-auto text-[#6B8E6B]"><FaArrowUp className="text-xs" /></span>
               </div>
             </div>
             <div className="rounded-xl border border-white/10 bg-[#141414] p-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#E8B86A]/15 text-[#E8B86A]">🎬</div>
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#E8B86A]/15 text-[#E8B86A]">
+                  <FaFilm />
+                </div>
                 <span className="text-xs text-white/60">Función de hoy</span>
               </div>
               <div className="mt-3 text-xl font-bold text-white">{funcionHoy ? new Date(funcionHoy.fechaHora).toLocaleTimeString("es-UY", { hour: "2-digit", minute: "2-digit" }) : "7:00 PM"}</div>
@@ -306,22 +313,26 @@ export default function AdminPage() {
             </div>
             <div className="rounded-xl border border-white/10 bg-[#141414] p-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#E8B86A]/15 text-[#E8B86A]">★</div>
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#E8B86A]/15 text-[#E8B86A]">
+                  <FaStar />
+                </div>
                 <span className="text-xs text-white/60">Votos totales</span>
               </div>
               <div className="mt-3 text-2xl font-bold text-white">{totalVotos}</div>
               <div className="mt-1 flex items-center gap-1 text-xs text-white/40">
-                esta semana <span className="ml-auto text-[#6B8E6B]">↗</span>
+                esta semana <span className="ml-auto text-[#6B8E6B]"><FaArrowUp className="text-xs" /></span>
               </div>
             </div>
             <div className="rounded-xl border border-white/10 bg-[#141414] p-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#E8B86A]/15 text-[#E8B86A]">💡</div>
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#E8B86A]/15 text-[#E8B86A]">
+                  <FaLightbulb />
+                </div>
                 <span className="text-xs text-white/60">Sugerencias</span>
               </div>
               <div className="mt-3 text-2xl font-bold text-white">{sugerenciasPendientes}</div>
               <div className="mt-1 flex items-center gap-1 text-xs text-white/40">
-                pendientes <span className="ml-auto text-[#E8B86A]">↗</span>
+                pendientes <span className="ml-auto text-[#E8B86A]"><FaArrowUp className="text-xs" /></span>
               </div>
             </div>
           </div>
@@ -344,20 +355,20 @@ export default function AdminPage() {
                     <div className="mt-3 inline-flex rounded bg-[#E8B86A]/15 px-2 py-1 text-[10px] font-bold tracking-wide text-[#E8B86A]">CONFIRMADA</div>
                     <div className="mt-3 space-y-2 text-xs">
                       <div className="flex items-center gap-2 text-white/70">
-                        <span className="text-[#E8B86A]">◷</span> {new Date(funcionHoy.fechaHora).toLocaleTimeString("es-UY", { hour: "2-digit", minute: "2-digit" })}
+                        <FaClock className="text-[#E8B86A]" /> {new Date(funcionHoy.fechaHora).toLocaleTimeString("es-UY", { hour: "2-digit", minute: "2-digit" })}
                       </div>
                       <div className="flex items-center gap-2 text-white/70">
-                        <span>🎟️</span> Capacidad: {totalCupos} cupos
+                        <FaTicketAlt /> Capacidad: {totalCupos} cupos
                       </div>
                       <div className="flex items-center gap-2 text-white/70">
-                        <span>👥</span> Reservados: {ocupados}
+                        <FaUsers /> Reservados: {ocupados}
                       </div>
                       <div className="flex items-center gap-2 text-white/70">
-                        <span>👥</span> Disponibles: {disponibles}
+                        <FaUsers /> Disponibles: {disponibles}
                       </div>
                     </div>
                     <button onClick={() => setShowCreate(!showCreate)} className="mt-4 flex items-center gap-2 rounded-lg border border-[#E8B86A]/30 bg-[#E8B86A]/10 px-3 py-2 text-xs font-medium text-[#E8B86A] hover:bg-[#E8B86A]/20">
-                      <span>⚙️</span> Gestionar función
+                      <FaCog /> Gestionar función
                     </button>
                   </div>
                   <div className="hidden flex-col items-center sm:flex">
@@ -431,7 +442,9 @@ export default function AdminPage() {
                 })}
                 {votacionActiva.length === 0 && <p className="text-xs text-white/40">Sin votos aún</p>}
               </div>
-              <button className="mt-4 w-full rounded-lg border border-red-500/30 bg-red-500/10 py-2 text-xs font-medium text-red-300">🔒 Cerrar votación</button>
+              <button className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 py-2 text-xs font-medium text-red-300">
+                <FaLock className="text-xs" /> Cerrar votación
+              </button>
             </div>
           </div>
 
@@ -500,7 +513,7 @@ export default function AdminPage() {
                 {(sugerencias || []).slice(0, 5).map((s) => (
                   <div key={s.id} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-[#E8B86A]">💡</span>
+                      <FaLightbulb className="text-[#E8B86A]" />
                       <span className="text-xs text-white/80 truncate max-w-[160px]">{s.titulo}</span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -521,19 +534,25 @@ export default function AdminPage() {
               <h2 className="text-xs font-bold tracking-[0.15em] text-white">ACTIVIDAD DEL DÍA</h2>
               <div className="mt-4 grid grid-cols-4 gap-3">
                 <div className="rounded-xl bg-white/[0.03] p-3 text-center">
-                  <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-[#E8B86A]/15 text-[#E8B86A]">🎟️</div>
+                  <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-[#E8B86A]/15 text-[#E8B86A]">
+                    <FaTicketAlt />
+                  </div>
                   <div className="mt-2 text-lg font-bold text-white">{reservasRecientes.length}</div>
                   <div className="text-xs text-white/40">Reservas</div>
                   <div className="text-[10px] text-[#6B8E6B]">+2 vs ayer</div>
                 </div>
                 <div className="rounded-xl bg-white/[0.03] p-3 text-center">
-                  <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-purple-500/15 text-purple-400">📊</div>
+                  <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-purple-500/15 text-purple-400">
+                    <FaChartBar />
+                  </div>
                   <div className="mt-2 text-lg font-bold text-white">{totalVotos}</div>
                   <div className="text-xs text-white/40">Votos</div>
                   <div className="text-[10px] text-[#6B8E6B]">+23 vs ayer</div>
                 </div>
                 <div className="rounded-xl bg-white/[0.03] p-3 text-center">
-                  <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-[#E8B86A]/15 text-[#E8B86A]">💡</div>
+                  <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-[#E8B86A]/15 text-[#E8B86A]">
+                    <FaLightbulb />
+                  </div>
                   <div className="mt-2 text-lg font-bold text-white">{sugerencias?.length || 0}</div>
                   <div className="text-xs text-white/40">Sugerencias</div>
                   <div className="text-[10px] text-[#6B8E6B]">+4 vs ayer</div>
@@ -550,19 +569,19 @@ export default function AdminPage() {
               <h2 className="text-xs font-bold tracking-[0.15em] text-white">ACCIONES RÁPIDAS</h2>
               <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2">
                 <button onClick={() => setShowCreate(true)} className="flex flex-col items-center gap-2 rounded-xl border border-white/5 bg-white/[0.03] p-3 hover:bg-white/[0.06]">
-                  <span className="text-lg">🎬</span>
+                  <FaFilm className="text-lg text-white/70" />
                   <span className="text-xs text-white/70">Nueva película</span>
                 </button>
                 <button onClick={() => setShowCreate(true)} className="flex flex-col items-center gap-2 rounded-xl border border-white/5 bg-white/[0.03] p-3 hover:bg-white/[0.06]">
-                  <span className="text-lg">🗓️</span>
+                  <FaCalendarAlt className="text-lg text-white/70" />
                   <span className="text-xs text-white/70">Nueva función</span>
                 </button>
                 <button className="flex flex-col items-center gap-2 rounded-xl border border-white/5 bg-white/[0.03] p-3 opacity-50">
-                  <span className="text-lg">◷</span>
+                  <FaClock className="text-lg text-white/40" />
                   <span className="text-xs text-white/40">Ver reportes</span>
                 </button>
                 <button className="flex flex-col items-center gap-2 rounded-xl border border-white/5 bg-white/[0.03] p-3 opacity-50">
-                  <span className="text-lg">📢</span>
+                  <FaLightbulb className="text-lg text-white/40" />
                   <span className="text-xs text-white/40">Enviar aviso</span>
                 </button>
               </div>

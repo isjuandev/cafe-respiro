@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { FaStar, FaUsers, FaArrowRight, FaClock, FaLightbulb, FaVoteYea, FaCalendarAlt } from "react-icons/fa";
 
 type Pelicula = {
   id: string;
@@ -214,12 +215,12 @@ export default function CarteleraPage() {
 
             <div className="mt-6 flex items-center gap-6">
               <div className="flex items-center gap-2">
-                <span className="text-[#E8B86A]">★</span>
+                <FaStar className="text-[#E8B86A] text-sm" />
                 <span className="text-sm font-medium">4.8</span>
               </div>
               <div className="h-6 w-px bg-white/10" />
               <div className="flex items-center gap-2 text-sm">
-                <span className="text-[#E8B86A]">👥</span>
+                <FaUsers className="text-[#E8B86A] text-sm" />
                 <span className={heroCuposDisponibles === 0 ? "text-red-400" : "text-white"}>
                   {heroCuposDisponibles > 0 ? heroCupos : "Completo"}
                 </span>
@@ -283,7 +284,7 @@ export default function CarteleraPage() {
                     className="mt-6 inline-flex items-center gap-3 rounded-lg bg-[#E8B86A] px-8 py-3.5 text-sm font-bold tracking-wide text-black transition-colors hover:bg-[#D4A574] disabled:bg-white/10 disabled:text-white/40"
                   >
                     {heroCuposDisponibles === 0 ? "CUPO LLENO" : "RESERVAR CUPO"}
-                    <span>→</span>
+                    <FaArrowRight className="text-xs" />
                   </button>
                 )}
               </>
@@ -292,7 +293,7 @@ export default function CarteleraPage() {
                 href="/sugerencias"
                 className="mt-6 inline-flex items-center gap-3 rounded-lg bg-[#E8B86A] px-8 py-3.5 text-sm font-bold tracking-wide text-black hover:bg-[#D4A574]"
               >
-                EXPLORAR CARTELERA <span>→</span>
+                EXPLORAR CARTELERA <FaArrowRight className="text-xs" />
               </Link>
             )}
           </div>
@@ -318,10 +319,10 @@ export default function CarteleraPage() {
       <section className="mx-auto max-w-[1280px] px-4 py-8 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-sm font-bold tracking-[0.15em] text-white">
-            <span className="text-[#E8B86A]">▦</span> PRÓXIMAS FUNCIONES
+            <FaCalendarAlt className="text-[#E8B86A]" /> PRÓXIMAS FUNCIONES
           </h2>
-          <Link href="/" className="text-xs font-medium tracking-wide text-[#E8B86A] hover:text-[#D4A574]">
-            Ver todas →
+          <Link href="/" className="inline-flex items-center gap-1 text-xs font-medium tracking-wide text-[#E8B86A] hover:text-[#D4A574]">
+            Ver todas <FaArrowRight className="text-[10px]" />
           </Link>
         </div>
 
@@ -363,7 +364,7 @@ export default function CarteleraPage() {
                   <div className="text-xs font-bold tracking-wide text-white">{typeof fecha === "string" ? "" : fecha.time}</div>
                   <div className="mt-2 text-xs text-white/60">{meta}</div>
                   <div className={`mt-3 flex items-center gap-1.5 text-xs ${lleno ? "text-white/40" : "text-[#E8B86A]"}`}>
-                    <span>👥</span> {cupos}
+                    <FaUsers className="text-xs" /> {cupos}
                   </div>
 
                   {f ? (
@@ -430,23 +431,23 @@ export default function CarteleraPage() {
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 <Link href="/sugerencias" className="group flex items-center gap-3 rounded-xl border border-white/10 bg-black/30 p-4 backdrop-blur hover:bg-black/50">
                   <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#E8B86A]/10 text-[#E8B86A]">
-                    <span className="text-xl">🗳️</span>
+                    <FaVoteYea className="text-xl" />
                   </div>
                   <div className="flex-1">
                     <div className="text-sm font-bold tracking-wide text-white">VOTA</div>
                     <div className="text-xs text-white/60">Elige la próxima película.</div>
                   </div>
-                  <span className="text-white/40 group-hover:text-white">→</span>
+                  <FaArrowRight className="text-white/40 group-hover:text-white" />
                 </Link>
                 <Link href="/sugerencias" className="group flex items-center gap-3 rounded-xl border border-white/10 bg-black/30 p-4 backdrop-blur hover:bg-black/50">
                   <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#E8B86A]/10 text-[#E8B86A]">
-                    <span className="text-xl">💡</span>
+                    <FaLightbulb className="text-xl" />
                   </div>
                   <div className="flex-1">
                     <div className="text-sm font-bold tracking-wide text-white">SUGIERE</div>
                     <div className="text-xs text-white/60">¿Hay una película que deberíamos proyectar?</div>
                   </div>
-                  <span className="text-white/40 group-hover:text-white">→</span>
+                  <FaArrowRight className="text-white/40 group-hover:text-white" />
                 </Link>
               </div>
             </div>
@@ -474,12 +475,12 @@ export default function CarteleraPage() {
           </div>
           <div className="flex flex-col justify-center rounded-2xl border border-white/10 bg-[#141414] p-6">
             <div className="flex items-center gap-2 text-xs font-bold tracking-[0.2em] text-[#6B8E6B]">
-              <span>◷</span> RESTAURANTE
+              <FaClock className="text-[#6B8E6B]" /> RESTAURANTE
             </div>
             <p className="mt-3 text-sm font-medium text-white">De 3:00 PM a 7:00 PM</p>
             <p className="mt-1 text-sm leading-relaxed text-white/60">Disfruta nuestro menú antes de la función.</p>
             <Link href="/" className="mt-4 inline-flex w-fit items-center gap-2 rounded-lg border border-[#6B8E6B]/50 px-4 py-2 text-xs font-bold tracking-wide text-[#6B8E6B] hover:bg-[#6B8E6B] hover:text-black">
-              VER MENÚ <span>→</span>
+              VER MENÚ <FaArrowRight className="text-xs" />
             </Link>
           </div>
           <div className="flex flex-col justify-center rounded-2xl bg-[#0a0a0a] p-6 text-right">

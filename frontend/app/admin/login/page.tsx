@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { FaLock, FaArrowRight } from "react-icons/fa";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -107,7 +108,7 @@ export default function AdminLoginPage() {
 
             <div className="mt-8">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#E8B86A]/20 bg-[#E8B86A]/10">
-                <span className="text-xl">🔒</span>
+                <FaLock className="text-xl text-[#E8B86A]" />
               </div>
               <h2 className="mt-4 text-2xl font-bold tracking-tight text-white">Iniciar sesión</h2>
               <p className="mt-1 text-sm text-white/50">Ingresa con tu usuario y clave de entorno</p>
@@ -143,9 +144,9 @@ export default function AdminLoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-xl bg-[#E8B86A] py-3.5 text-sm font-bold tracking-wide text-black transition-colors hover:bg-[#D4A574] disabled:opacity-50"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#E8B86A] py-3.5 text-sm font-bold tracking-wide text-black transition-colors hover:bg-[#D4A574] disabled:opacity-50"
               >
-                {loading ? "Ingresando…" : "Ingresar al panel →"}
+                {loading ? "Ingresando…" : <>Ingresar al panel <FaArrowRight className="text-xs" /></>}
               </button>
 
               <div className="rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3">
