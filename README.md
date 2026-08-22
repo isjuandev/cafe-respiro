@@ -1,6 +1,6 @@
 # Café Respiro — Cine-Café
 
-MVP donde clientes sugieren películas, votan y reservan cupo para funciones. **Sprint 0: solo infraestructura, sin features.**
+MVP donde clientes sugieren películas, votan y reservan cupo para funciones. **Sprint 1: cartelera pública + sugerencia de películas** (Sprint 0: infra completa).
 
 Stack: **Monorepo pnpm** · **NestJS + Prisma + PostgreSQL** · **Next.js (App Router) + Tailwind + shadcn/ui** · **Docker Compose** · Listo para **Coolify**.
 
@@ -19,6 +19,10 @@ Un solo comando levanta `postgres` → `backend` (con migraciones) → `frontend
 ```bash
 cp .env.example .env        # ya viene con defaults locales
 docker compose up --build
+# en otra terminal, seed de cartelera (3 pelis + 3 funciones + 1 sugerencia)
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/caferespiro?schema=public pnpm --filter backend exec prisma db seed
+# o dentro del container:
+docker compose exec backend npx prisma db seed
 ```
 
 Servicios:
@@ -90,19 +94,22 @@ Variables: `backend/.env` → `DATABASE_URL`, frontend usa `BACKEND_URL` (ver `.
 │   │   ├── app.module.ts
 │   │   ├── app.controller.ts    # GET /api/health
 │   │   ├── prisma/              # PrismaService (global)
-│   │   ├── peliculas/
-│   │   ├── sugerencias/
-│   │   ├── votos/
-│   │   ├── funciones/
-│   │   └── reservas/            # módulos vacíos listos para Sprint 1
+│   │   ├── common/utils/normalize.ts # normalizeTitulo / normalizeContacto
+│   │   ├── sugerencias/         # GET /api/sugerencias, POST /api/sugerencias (duplicado con índice parcial)
+│   │   ├── funciones/           # GET /api/funciones (cartelera con cuposDisponibles)
+│   │   ├── peliculas/           # reservado
+│   │   ├── votos/               # Sprint 2
+│   │   └── reservas/            # Sprint 2
 │   ├── prisma/
-│   │   ├── schema.prisma        # Pelicula, Sugerencia, Voto, Funcion, Reserva
-│   │   └── migrations/          # 20260822070148_init
-│   └── Dockerfile               # multi-stage, prisma migrate deploy + nest build
+│   │   ├── schema.prisma        # Pelicula, Sugerencia (con estado + tituloNormalizado), Voto, Funcion, Reserva
+│   │   ├── migrations/          # 20260822071141_init (con índice parcial único)
+│   │   └── seed.ts              # 3 pelis + 3 funciones + 1 sugerencia
+│   └── Dockerfile               # multi-stage, prisma migrate deploy + node dist/src/main.js
 └── frontend/
     ├── app/
-    │   ├── layout.tsx
-    │   ├── page.tsx             # landing Sprint 0 (usa /api/health vía proxy)
+    │   ├── layout.tsx           # header nav Cartelera | Sugerencias
+    │   ├── page.tsx             # / cartelera (funciones programadas)
+    │   ├── sugerencias/page.tsx # /sugerencias lista + formulario
     │   └── globals.css          # tailwind + shadcn css variables
     ├── components/ui/button.tsx # shadcn/ui
     ├── lib/utils.ts             # cn() + apiFetch (usa /api relativo)
@@ -113,28 +120,34 @@ Variables: `backend/.env` → `DATABASE_URL`, frontend usa `BACKEND_URL` (ver `.
 ## Modelo de datos (Prisma)
 
 - **Pelicula** (catálogo curado): `titulo*`, `director`, `anio`, `duracionMin`, `sinopsis`, `posterUrl`
-- **Sugerencia** (Sprint 0 sin `estado`; moderación se agrega en su feature): `titulo*`, `director`, `anio`, `comentario`, `nombreSolicitante*`, `contacto*` (normalizado lower+trim), `peliculaId?`
+- **Sugerencia** (Sprint 1 con `estado` + anti-carrera): `titulo*`, `tituloNormalizado*` (determinista: NFD lower trim sin puntuación colapso espacios), `comentario?`, `nombreSolicitante*`, `contacto*` (normalizado lower), `estado` (`PENDIENTE|PROGRAMADA|DESCARTADA` default `PENDIENTE`), `peliculaId?`
+  - Índice parcial único: `CREATE UNIQUE INDEX ON "Sugerencia"("tituloNormalizado") WHERE estado IN ('PENDIENTE','PROGRAMADA')` — `DESCARTADA` permite re-sugerir. Race garantizado por PG (P2002 → 200 duplicada).
 - **Voto**: `sugerenciaId*`, `nombreVotante*`, `contacto*` — `@@unique([sugerenciaId, contacto])`
-- **Funcion**: `peliculaId*`, `fechaHora*` (`DateTime` único: fecha+hora en una sola columna, fácil de ordenar/comparar), `cupoTotal*` — `@@unique([peliculaId, fechaHora])`
+- **Funcion**: `peliculaId*`, `fechaHora*` (`DateTime` único: fecha+hora en una sola columna), `cupoTotal*` — `@@unique([peliculaId, fechaHora])`
 - **Reserva**: `funcionId*`, `nombre*`, `contacto*`, `cantidad` (default 1) — `@@unique([funcionId, contacto])`
 
-Identificación sin cuenta: `contacto` (email o teléfono) normalizado. Anti-duplicado por constraint DB → `409 Conflict`.
+Identificación sin cuenta: `contacto` normalizado. Anti-duplicado de sugerencias por índice parcial, votos/reservas por constraint unique.
 
-## API (convención Sprint 1)
+## API Sprint 1 (implementado)
 
-Prefijo global `/api` en NestJS:
+Prefijo global `/api` en NestJS. No incluye votación/reservas (Sprint 2) ni admin (Sprint 3).
 
 ```
 GET    /api/health
-GET    /api/peliculas         POST /api/peliculas
-GET    /api/sugerencias       POST /api/sugerencias
-POST   /api/sugerencias/:id/votos
-GET    /api/funciones         POST /api/funciones
-GET    /api/funciones/:id     GET /api/funciones/:id/reservas
-POST   /api/funciones/:id/reservas
+GET    /api/sugerencias              # solo PENDIENTE, order createdAt desc, incluye _count.votos
+POST   /api/sugerencias              # body { titulo, comentario?, nombre, contacto } → 201 { duplicada:false } o 200 { duplicada:true, sugerencia: existente } + 400 validation
+GET    /api/funciones                # solo fechaHora >= now(), order asc, incluye pelicula + cuposDisponibles/cuposOcupados
 ```
 
-Frontend consume solo vía `/api` relativo (proxy), nunca directo a DB.
+Validación: `CreateSugerenciaDto` con `class-validator` (titulo 2-120, comentario 0-500, nombre 2-60, contacto 2-100) + `ValidationPipe` global + validación cliente en formulario.
+
+Frontend consume solo vía `/api` relativo (proxy), nunca directo a DB. Estados de carga/error/empty visibles.
+
+## Frontend Sprint 1
+
+- `/` → Cartelera: fetch `GET /api/funciones`, loading skeleton, error con retry, empty → CTA a `/sugerencias`, grid con `fechaHora` localizada, cupos disponibles, botón reservar deshabilitado (Sprint 2).
+- `/sugerencias` → Lista `GET /api/sugerencias` + formulario `POST /api/sugerencias` con validación cliente, mensajes de éxito/duplicada/error, recarga lista tras crear.
+- `layout.tsx` con header `Cartelera | Sugerencias` (rutas separadas para compartir links).
 
 ## Variables de entorno
 
@@ -157,7 +170,7 @@ BACKEND_URL=http://backend:3001
 
 ## Docker
 
-- `backend/Dockerfile`: base `node:20-alpine` + `pnpm`, deps cacheado, `prisma generate`, `nest build`, runner ejecuta `npx prisma migrate deploy && node dist/main.js` con healthcheck `wget /api/health`.
+- `backend/Dockerfile`: base `node:20-alpine` + `pnpm`, deps cacheado, `prisma generate`, `nest build`, runner ejecuta `npx prisma migrate deploy && node dist/src/main.js` con healthcheck `wget /api/health`.
 - `frontend/Dockerfile`: base `node:20-alpine` + `pnpm`, deps cacheado, `next build`, runner `pnpm start` (port 3000). `BACKEND_URL` como `ARG`/`ENV` en runtime para rewrites.
 - `docker-compose.yml`: `postgres:16-alpine` con healthcheck `pg_isready`, `backend` depends_on postgres healthy, `frontend` depends_on backend healthy (con `BACKEND_URL=http://backend:3001`). Volúmenes: `postgres_data`.
 
@@ -172,4 +185,5 @@ pnpm docker:up      # docker compose up --build
 pnpm docker:down    # docker compose down
 pnpm db:generate    # prisma generate
 pnpm db:migrate     # prisma migrate dev
+pnpm db:seed        # prisma db seed (cartelera demo)
 ```

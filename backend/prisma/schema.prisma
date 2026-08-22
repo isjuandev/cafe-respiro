@@ -7,6 +7,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum SugerenciaEstado {
+  PENDIENTE
+  PROGRAMADA
+  DESCARTADA
+}
+
 model Pelicula {
   id          String   @id @default(cuid())
   titulo      String
@@ -25,20 +31,26 @@ model Pelicula {
 }
 
 model Sugerencia {
-  id                String   @id @default(cuid())
+  id                String           @id @default(cuid())
   titulo            String
+  tituloNormalizado String
   director          String?
   anio              Int?
-  comentario        String?  @db.Text
+  comentario        String?          @db.Text
   nombreSolicitante String
   contacto          String
+  estado            SugerenciaEstado @default(PENDIENTE)
   peliculaId        String?
-  pelicula          Pelicula? @relation(fields: [peliculaId], references: [id], onDelete: SetNull)
+  pelicula          Pelicula?        @relation(fields: [peliculaId], references: [id], onDelete: SetNull)
   votos             Voto[]
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
   @@index([peliculaId])
+  @@index([estado])
+  @@index([tituloNormalizado])
+  // El constraint único parcial para duplicados activos se crea vía migración SQL:
+  // CREATE UNIQUE INDEX "Sugerencia_tituloNormalizado_activo_key" ON "Sugerencia"("tituloNormalizado") WHERE "estado" IN ('PENDIENTE', 'PROGRAMADA')
 }
 
 model Voto {
@@ -57,7 +69,7 @@ model Funcion {
   id         String   @id @default(cuid())
   peliculaId String
   pelicula   Pelicula @relation(fields: [peliculaId], references: [id], onDelete: Cascade)
-  fechaHora  DateTime // único campo DateTime: fecha + hora en una sola columna, fácil de ordenar/comparar
+  fechaHora  DateTime
   cupoTotal  Int
   reservas   Reserva[]
   createdAt  DateTime @default(now())

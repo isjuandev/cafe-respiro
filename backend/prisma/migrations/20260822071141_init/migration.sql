@@ -1,3 +1,6 @@
+-- CreateEnum
+CREATE TYPE "SugerenciaEstado" AS ENUM ('PENDIENTE', 'PROGRAMADA', 'DESCARTADA');
+
 -- CreateTable
 CREATE TABLE "Pelicula" (
     "id" TEXT NOT NULL,
@@ -17,11 +20,13 @@ CREATE TABLE "Pelicula" (
 CREATE TABLE "Sugerencia" (
     "id" TEXT NOT NULL,
     "titulo" TEXT NOT NULL,
+    "tituloNormalizado" TEXT NOT NULL,
     "director" TEXT,
     "anio" INTEGER,
     "comentario" TEXT,
     "nombreSolicitante" TEXT NOT NULL,
     "contacto" TEXT NOT NULL,
+    "estado" "SugerenciaEstado" NOT NULL DEFAULT 'PENDIENTE',
     "peliculaId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -71,6 +76,12 @@ CREATE INDEX "Pelicula_titulo_idx" ON "Pelicula"("titulo");
 CREATE INDEX "Sugerencia_peliculaId_idx" ON "Sugerencia"("peliculaId");
 
 -- CreateIndex
+CREATE INDEX "Sugerencia_estado_idx" ON "Sugerencia"("estado");
+
+-- CreateIndex
+CREATE INDEX "Sugerencia_tituloNormalizado_idx" ON "Sugerencia"("tituloNormalizado");
+
+-- CreateIndex
 CREATE INDEX "Voto_sugerenciaId_idx" ON "Voto"("sugerenciaId");
 
 -- CreateIndex
@@ -102,3 +113,7 @@ ALTER TABLE "Funcion" ADD CONSTRAINT "Funcion_peliculaId_fkey" FOREIGN KEY ("pel
 
 -- AddForeignKey
 ALTER TABLE "Reserva" ADD CONSTRAINT "Reserva_funcionId_fkey" FOREIGN KEY ("funcionId") REFERENCES "Funcion"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- Partial unique index: evita duplicados solo entre sugerencias activas (PENDIENTE/PROGRAMADA)
+-- DESCARTADA puede volver a sugerirse. Garantiza atomicidad ante race conditions (P2002).
+CREATE UNIQUE INDEX "Sugerencia_tituloNormalizado_activo_key" ON "Sugerencia"("tituloNormalizado") WHERE "estado" IN ('PENDIENTE', 'PROGRAMADA');

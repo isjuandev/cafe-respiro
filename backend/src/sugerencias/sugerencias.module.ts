@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
+import { SugerenciasService } from './sugerencias.service';
+import { SugerenciasController } from './sugerencias.controller';
 
 @Module({
-  controllers: [],
-  providers: [],
+  controllers: [SugerenciasController],
+  providers: [SugerenciasService],
 })
 export class SugerenciasModule {}

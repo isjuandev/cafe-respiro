@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
+import { FuncionesService } from './funciones.service';
+import { FuncionesController } from './funciones.controller';
 
 @Module({
-  controllers: [],
-  providers: [],
+  controllers: [FuncionesController],
+  providers: [FuncionesService],
 })
 export class FuncionesModule {}
