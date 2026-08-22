@@ -16,6 +16,20 @@ type Sugerencia = {
 
 type SubmitState = { loading: boolean; error: string | null; success: string | null; duplicada: Sugerencia | null };
 
+const VOTOS_KEY = "cafe-respiro:votos";
+
+function getVotadas(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(localStorage.getItem(VOTOS_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+function setVotadas(ids: string[]) {
+  localStorage.setItem(VOTOS_KEY, JSON.stringify(ids));
+}
+
 export default function SugerenciasPage() {
   const [sugerencias, setSugerencias] = useState<Sugerencia[] | null>(null);
   const [listError, setListError] = useState<string | null>(null);
@@ -24,6 +38,17 @@ export default function SugerenciasPage() {
   const [form, setForm] = useState({ titulo: "", comentario: "", nombre: "", contacto: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submit, setSubmit] = useState<SubmitState>({ loading: false, error: null, success: null, duplicada: null });
+
+  // Voto state per sugerencia
+  const [votadas, setVotadasState] = useState<string[]>([]);
+  const [votoForm, setVotoForm] = useState<Record<string, { nombre: string; contacto: string }>>({});
+  const [votoLoading, setVotoLoading] = useState<Record<string, boolean>>({});
+  const [votoError, setVotoError] = useState<Record<string, string | null>>({});
+  const [expandedVoto, setExpandedVoto] = useState<string | null>(null);
+
+  useEffect(() => {
+    setVotadasState(getVotadas());
+  }, []);
 
   async function loadSugerencias() {
     try {
@@ -75,17 +100,11 @@ export default function SugerenciasPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        // Nest ValidationPipe devuelve { message: [...] }
         const msg = Array.isArray(data.message) ? data.message.join(", ") : data.message || `Error ${res.status}`;
         throw new Error(msg);
       }
       if (data.duplicada) {
-        setSubmit({
-          loading: false,
-          error: null,
-          success: null,
-          duplicada: data.sugerencia,
-        });
+        setSubmit({ loading: false, error: null, success: null, duplicada: data.sugerencia });
       } else {
         setSubmit({ loading: false, error: null, success: "¡Sugerencia creada!", duplicada: null });
         setForm({ titulo: "", comentario: "", nombre: "", contacto: "" });
@@ -96,11 +115,49 @@ export default function SugerenciasPage() {
     }
   }
 
+  async function handleVotar(sugerenciaId: string) {
+    const f = votoForm[sugerenciaId] || { nombre: "", contacto: "" };
+    if (f.nombre.trim().length < 2 || f.contacto.trim().length < 2) {
+      setVotoError((prev) => ({ ...prev, [sugerenciaId]: "Nombre y contacto son obligatorios (mín 2)" }));
+      return;
+    }
+    try {
+      setVotoLoading((p) => ({ ...p, [sugerenciaId]: true }));
+      setVotoError((p) => ({ ...p, [sugerenciaId]: null }));
+      const res = await fetch(`/api/sugerencias/${sugerenciaId}/votos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre: f.nombre.trim(), contacto: f.contacto.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const msg = Array.isArray(data.message) ? data.message.join(", ") : data.message || `Error ${res.status}`;
+        // Si es duplicado, marcamos como votada igual para feedback inmediato
+        if (res.status === 409) {
+          const next = [...new Set([...getVotadas(), sugerenciaId])];
+          setVotadas(next);
+          setVotadasState(next);
+        }
+        throw new Error(msg);
+      }
+      // Éxito: guarda en localStorage y refresca ranking
+      const next = [...new Set([...getVotadas(), sugerenciaId])];
+      setVotadas(next);
+      setVotadasState(next);
+      setExpandedVoto(null);
+      loadSugerencias();
+    } catch (err) {
+      setVotoError((p) => ({ ...p, [sugerenciaId]: err instanceof Error ? err.message : "Error" }));
+    } finally {
+      setVotoLoading((p) => ({ ...p, [sugerenciaId]: false }));
+    }
+  }
+
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Sugerencias</h1>
-        <p className="mt-1 text-muted-foreground">Propón una película y vota por las favoritas (voto en Sprint 2)</p>
+        <p className="mt-1 text-muted-foreground">Propón una película y vota por las favoritas</p>
       </div>
 
       {/* Formulario */}
@@ -162,9 +219,7 @@ export default function SugerenciasPage() {
           {submit.duplicada && (
             <div className="rounded-md border border-amber-500 bg-amber-50 p-3 text-sm">
               <p className="font-medium text-amber-800">Esa película ya fue sugerida</p>
-              <p className="mt-1 text-amber-700">
-                “{submit.duplicada.titulo}” ya existe. ¡Invita a otros a votarla cuando se habilite la votación!
-              </p>
+              <p className="mt-1 text-amber-700">“{submit.duplicada.titulo}” ya existe. ¡Vótala!</p>
             </div>
           )}
 
@@ -174,9 +229,9 @@ export default function SugerenciasPage() {
         </form>
       </div>
 
-      {/* Lista */}
+      {/* Lista con ranking */}
       <div>
-        <h2 className="text-lg font-semibold">Sugerencias activas</h2>
+        <h2 className="text-lg font-semibold">Sugerencias activas · Ranking por votos</h2>
         {listLoading ? (
           <div className="mt-4 grid gap-3">
             {[1, 2, 3].map((i) => (
@@ -197,16 +252,84 @@ export default function SugerenciasPage() {
           </div>
         ) : (
           <div className="mt-4 grid gap-3">
-            {sugerencias.map((s) => (
-              <div key={s.id} className="rounded-lg border bg-card p-4">
-                <h3 className="font-medium">{s.titulo}</h3>
-                {s.comentario && <p className="mt-1 text-sm text-muted-foreground">{s.comentario}</p>}
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Sugerida por {s.nombreSolicitante} · {new Date(s.createdAt).toLocaleDateString("es-UY")}
-                  {s._count ? ` · ${s._count.votos} votos` : ""}
-                </p>
-              </div>
-            ))}
+            {sugerencias.map((s, idx) => {
+              const yaVoto = votadas.includes(s.id);
+              const votos = s._count?.votos ?? 0;
+              const isTop = idx === 0 && votos > 0;
+              return (
+                <div
+                  key={s.id}
+                  className={`rounded-lg border bg-card p-4 ${isTop ? "ring-1 ring-primary" : ""}`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-xs font-bold">
+                          #{idx + 1}
+                        </span>
+                        <h3 className="font-medium">{s.titulo}</h3>
+                        {isTop && <span className="rounded bg-primary px-2 py-0.5 text-xs text-primary-foreground">Top</span>}
+                      </div>
+                      {s.comentario && <p className="mt-1 text-sm text-muted-foreground">{s.comentario}</p>}
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Sugerida por {s.nombreSolicitante} · {new Date(s.createdAt).toLocaleDateString("es-UY")} ·{" "}
+                        <span className="font-medium text-foreground">{votos} voto{votos !== 1 ? "s" : ""}</span>
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <Button
+                        size="sm"
+                        variant={yaVoto ? "secondary" : "default"}
+                        disabled={yaVoto || votoLoading[s.id]}
+                        onClick={() => {
+                          if (yaVoto) return;
+                          if (expandedVoto !== s.id) {
+                            setExpandedVoto(s.id);
+                            // Pre-llenar con datos del form de sugerencia si existen
+                            setVotoForm((prev) => ({
+                              ...prev,
+                              [s.id]: prev[s.id] || { nombre: form.nombre, contacto: form.contacto },
+                            }));
+                          } else {
+                            handleVotar(s.id);
+                          }
+                        }}
+                      >
+                        {yaVoto ? "Ya votaste" : votoLoading[s.id] ? "Votando…" : expandedVoto === s.id ? "Confirmar voto" : `Votar · ${votos}`}
+                      </Button>
+                      {expandedVoto === s.id && !yaVoto && (
+                        <div className="flex w-64 flex-col gap-2 rounded border bg-muted/50 p-2">
+                          <input
+                            className="rounded border bg-background px-2 py-1 text-xs"
+                            placeholder="Tu nombre"
+                            value={votoForm[s.id]?.nombre || ""}
+                            onChange={(e) => setVotoForm((p) => ({ ...p, [s.id]: { ...p[s.id], nombre: e.target.value } }))}
+                          />
+                          <input
+                            className="rounded border bg-background px-2 py-1 text-xs"
+                            placeholder="Tu contacto"
+                            value={votoForm[s.id]?.contacto || ""}
+                            onChange={(e) => setVotoForm((p) => ({ ...p, [s.id]: { ...p[s.id], contacto: e.target.value } }))}
+                          />
+                          {votoError[s.id] && <p className="text-xs text-destructive">{votoError[s.id]}</p>}
+                          <div className="flex gap-1">
+                            <Button size="sm" variant="ghost" onClick={() => setExpandedVoto(null)}>
+                              Cancelar
+                            </Button>
+                            <Button size="sm" onClick={() => handleVotar(s.id)} disabled={!!votoLoading[s.id]}>
+                              Confirmar
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                      {votoError[s.id] && expandedVoto !== s.id && (
+                        <p className="max-w-40 text-xs text-destructive">{votoError[s.id]}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

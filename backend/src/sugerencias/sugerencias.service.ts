@@ -9,12 +9,16 @@ export class SugerenciasService {
   constructor(private prisma: PrismaService) {}
 
   async findActivas() {
-    return this.prisma.sugerencia.findMany({
+    const sugerencias = await this.prisma.sugerencia.findMany({
       where: { estado: 'PENDIENTE' },
-      orderBy: { createdAt: 'desc' },
       include: {
         _count: { select: { votos: true } },
       },
+    });
+    // Orden ranking: votos desc, luego más reciente primero
+    return sugerencias.sort((a, b) => {
+      if (b._count.votos !== a._count.votos) return b._count.votos - a._count.votos;
+      return b.createdAt.getTime() - a.createdAt.getTime();
     });
   }
 
