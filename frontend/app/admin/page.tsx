@@ -320,9 +320,9 @@ export default function AdminPage() {
           <Link href="/admin" className="flex items-center gap-3 rounded-lg bg-[#E8B86A]/20 px-3 py-2.5 text-sm font-medium text-[#E8B86A]">
             <FaHome className="text-sm" /> Dashboard
           </Link>
-          <div className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-white/40">
-            <FaFilm className="text-white/40" /> Películas <span className="ml-auto text-xs opacity-0">›</span>
-          </div>
+          <Link href="/admin/peliculas" className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-white/70 hover:bg-white/5 hover:text-white">
+            <FaFilm className="text-white/70" /> Películas
+          </Link>
           <Link href="/admin" className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-white/70 hover:bg-white/5 hover:text-white">
             <FaCalendarAlt className="text-white/70" /> Funciones
           </Link>
