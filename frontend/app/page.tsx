@@ -433,7 +433,7 @@ export default function CarteleraPage() {
               <h2 className="text-xl font-bold tracking-wide text-white">TÚ DECIDES QUÉ VEMOS</h2>
               <p className="mt-1 text-sm text-white/70">Café Respiro también se programa contigo.</p>
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                <Link href="/sugerencias" className="group flex items-center gap-3 rounded-xl border border-white/10 bg-black/30 p-4 backdrop-blur hover:bg-black/50">
+                <Link href="/votar" className="group flex items-center gap-3 rounded-xl border border-white/10 bg-black/30 p-4 backdrop-blur hover:bg-black/50">
                   <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#E8B86A]/10 text-[#E8B86A]">
                     <FaVoteYea className="text-xl" />
                   </div>

@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 export function Header() {
   const pathname = usePathname();
   if (pathname.startsWith("/admin")) return null;
-  const isActive = (href: string) => pathname === href || (href === "/sugerencias" && pathname.startsWith("/sugerencias"));
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
 
   const linkClass = (href: string) =>
     `relative py-2 text-sm font-medium tracking-wide transition-colors ${isActive(href) ? "text-white" : "text-white/70 hover:text-white"}`;
@@ -36,12 +36,13 @@ export function Header() {
             Cartelera
             {isActive("/") && <span className="absolute bottom-0 left-0 h-[2px] w-full bg-[#E8B86A]" />}
           </Link>
-          <Link href="/sugerencias" className={linkClass("/sugerencias")}>
+          <Link href="/votar" className={linkClass("/votar")}>
             Votar
-            {isActive("/sugerencias") && <span className="absolute bottom-0 left-0 h-[2px] w-full bg-[#E8B86A]" />}
+            {isActive("/votar") && <span className="absolute bottom-0 left-0 h-[2px] w-full bg-[#E8B86A]" />}
           </Link>
-          <Link href="/sugerencias" className="py-2 text-sm font-medium tracking-wide text-white/70 hover:text-white">
+          <Link href="/sugerencias" className={linkClass("/sugerencias")}>
             Sugerir
+            {isActive("/sugerencias") && <span className="absolute bottom-0 left-0 h-[2px] w-full bg-[#E8B86A]" />}
           </Link>
           <Link href="/" className="py-2 text-sm font-medium tracking-wide text-white/70 hover:text-white">
             Mis reservas
@@ -50,8 +51,8 @@ export function Header() {
 
         <div className="flex items-center gap-3">
           <nav className="flex items-center gap-4 md:hidden">
-            <Link href={pathname === "/" ? "/sugerencias" : "/"} className="text-sm font-medium text-white">
-              {pathname === "/sugerencias" ? "Cartelera" : "Votar"}
+            <Link href={pathname === "/" ? "/votar" : "/"} className="text-sm font-medium text-white">
+              {pathname === "/" ? "Votar" : "Cartelera"}
             </Link>
           </nav>
           <Link
