@@ -163,6 +163,23 @@ export default function AdminPage() {
     }
   }
 
+  const [cerrando, setCerrando] = useState(false);
+  async function cerrarVotacion() {
+    if (!confirm("¿Cerrar la votación activa? Todas las PENDIENTE pasarán a DESCARTADA.")) return;
+    try {
+      setCerrando(true);
+      const res = await fetch("/api/admin/votaciones/cerrar", { method: "POST", credentials: "include" });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      alert(`Votación cerrada: ${data.cerradas} sugerencias cerradas`);
+      await loadAll();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Error al cerrar");
+    } finally {
+      setCerrando(false);
+    }
+  }
+
   async function logout() {
     await fetch("/api/admin/logout", { method: "POST", credentials: "include" });
     router.push("/admin/login");
@@ -368,7 +385,7 @@ export default function AdminPage() {
                       </div>
                     </div>
                     <button onClick={() => setShowCreate(!showCreate)} className="mt-4 flex items-center gap-2 rounded-lg border border-[#E8B86A]/30 bg-[#E8B86A]/10 px-3 py-2 text-xs font-medium text-[#E8B86A] hover:bg-[#E8B86A]/20">
-                      <FaCog /> Gestionar función
+                      <FaCalendarAlt /> {showCreate ? "Cerrar" : "Programar función"}
                     </button>
                   </div>
                   <div className="hidden flex-col items-center sm:flex">
@@ -391,23 +408,83 @@ export default function AdminPage() {
                 <p className="mt-4 text-sm text-white/50">No hay función programada para hoy.</p>
               )}
               {showCreate && (
-                <form onSubmit={crearFuncion} className="mt-4 space-y-3 rounded-xl border border-white/10 bg-black/30 p-4">
-                  <select value={createForm.sugerenciaId} onChange={(e) => setCreateForm({ ...createForm, sugerenciaId: e.target.value })} className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" required>
-                    <option value="" className="bg-black">Sugerencia PROGRAMADA</option>
-                    {(sugerencias || []).filter((s) => s.estado === "PROGRAMADA").map((s) => (
-                      <option key={s.id} value={s.id} className="bg-black">
-                        {s.titulo} ({s._count.votos} votos)
-                      </option>
-                    ))}
-                  </select>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <input type="datetime-local" required value={createForm.fechaHora} onChange={(e) => setCreateForm({ ...createForm, fechaHora: e.target.value })} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" />
-                    <input type="number" min={1} max={200} required value={createForm.cupoTotal} onChange={(e) => setCreateForm({ ...createForm, cupoTotal: Number(e.target.value) })} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="Cupo" />
+                <form onSubmit={crearFuncion} className="mt-6 space-y-4 rounded-xl border border-[#E8B86A]/20 bg-[#0A0A0A] p-5">
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Programar función</h3>
+                    <p className="mt-1 text-xs leading-relaxed text-white/50">
+                      Elige una idea aprobada y asígnale fecha y cupo. Se creará la película y la función que verán los clientes en Cartelera.
+                    </p>
                   </div>
-                  {createError && <p className="text-xs text-red-400">{createError}</p>}
-                  {createSuccess && <p className="text-xs text-green-400">{createSuccess}</p>}
-                  <button type="submit" className="rounded-lg bg-[#E8B86A] px-4 py-2 text-sm font-bold text-black">
-                    Crear función
+                  <div>
+                    <label className="text-xs font-medium tracking-wide text-white/70">Sugerencia aprobada *</label>
+                    <select
+                      value={createForm.sugerenciaId}
+                      onChange={(e) => setCreateForm({ ...createForm, sugerenciaId: e.target.value })}
+                      className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#141414] px-3 py-2.5 text-sm text-white focus:border-[#E8B86A]/50 focus:outline-none"
+                      required
+                    >
+                      <option value="" className="bg-[#141414]">
+                        — Elige una sugerencia en PROGRAMADA —
+                      </option>
+                      {(sugerencias || [])
+                        .filter((s) => s.estado === "PROGRAMADA")
+                        .map((s) => (
+                          <option key={s.id} value={s.id} className="bg-[#141414]">
+                            {s.titulo} — {s._count.votos} votos · por {s.nombreSolicitante}
+                          </option>
+                        ))}
+                    </select>
+                    {(sugerencias || []).filter((s) => s.estado === "PROGRAMADA").length === 0 && (
+                      <p className="mt-2 text-xs text-amber-300/80">No hay sugerencias programadas. Cambia alguna de PENDIENTE a PROGRAMADA arriba.</p>
+                    )}
+                  </div>
+
+                  {createForm.sugerenciaId && (
+                    <div className="flex items-center gap-3 rounded-xl border border-[#E8B86A]/20 bg-[#E8B86A]/5 p-3">
+                      <img src={getPoster((sugerencias || []).find((s) => s.id === createForm.sugerenciaId)?.titulo || "")} alt="" className="h-12 w-9 rounded object-cover" />
+                      <div className="flex-1">
+                        <div className="text-xs font-medium text-white">{(sugerencias || []).find((s) => s.id === createForm.sugerenciaId)?.titulo}</div>
+                        <div className="text-xs text-white/50">→ Se creará como Película + Función</div>
+                      </div>
+                      <FaArrowUp className="text-[#E8B86A] rotate-45" />
+                      <div className="text-center">
+                        <div className="text-xs font-bold text-white">Función</div>
+                        <div className="text-[10px] text-white/40">en cartelera</div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="text-xs font-medium tracking-wide text-white/70">Fecha y hora de la función *</label>
+                      <input
+                        type="datetime-local"
+                        required
+                        value={createForm.fechaHora}
+                        onChange={(e) => setCreateForm({ ...createForm, fechaHora: e.target.value })}
+                        className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#141414] px-3 py-2.5 text-sm text-white focus:border-[#E8B86A]/50 focus:outline-none"
+                      />
+                      <p className="mt-1 text-[10px] text-white/30">Debe ser futura</p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium tracking-wide text-white/70">Cupo total *</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={200}
+                        required
+                        value={createForm.cupoTotal}
+                        onChange={(e) => setCreateForm({ ...createForm, cupoTotal: Number(e.target.value) })}
+                        className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#141414] px-3 py-2.5 text-sm text-white focus:border-[#E8B86A]/50 focus:outline-none"
+                        placeholder="30"
+                      />
+                      <p className="mt-1 text-[10px] text-white/30">1 a 200 personas</p>
+                    </div>
+                  </div>
+                  {createError && <p className="rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-300">{createError}</p>}
+                  {createSuccess && <p className="rounded-lg bg-green-500/10 px-3 py-2 text-xs text-green-300">{createSuccess} · Ver en cartelera</p>}
+                  <button type="submit" className="w-full rounded-xl bg-[#E8B86A] py-3 text-sm font-bold tracking-wide text-black hover:bg-[#D4A574]">
+                    Programar función
                   </button>
                 </form>
               )}
@@ -442,8 +519,12 @@ export default function AdminPage() {
                 })}
                 {votacionActiva.length === 0 && <p className="text-xs text-white/40">Sin votos aún</p>}
               </div>
-              <button className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 py-2 text-xs font-medium text-red-300">
-                <FaLock className="text-xs" /> Cerrar votación
+              <button
+                onClick={cerrarVotacion}
+                disabled={cerrando}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 py-2 text-xs font-medium text-red-300 hover:bg-red-500/20 disabled:opacity-50"
+              >
+                <FaLock className="text-xs" /> {cerrando ? "Cerrando..." : "Cerrar votación"}
               </button>
             </div>
           </div>
