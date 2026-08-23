@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { FaLightbulb, FaPaperPlane, FaCheck, FaExclamationTriangle } from "react-icons/fa";
+import { PageHero } from "@/components/PageHero";
 
 type Sugerencia = {
   id: string;
@@ -95,28 +96,13 @@ export default function SugerirPage() {
 
   return (
     <div className="bg-[#050507] text-white">
-      {/* HERO */}
-      <section className="relative overflow-hidden border-b border-white/5">
-        <div className="absolute inset-0">
-          <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?w=1600&h=700&fit=crop" alt="Café" className="h-full w-full object-cover opacity-20" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#050507] via-[#050507]/80 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#050507] to-transparent" />
-        </div>
-        <div className="relative mx-auto max-w-[1280px] px-4 py-10 sm:px-6 lg:px-8">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#E8B86A]/20 bg-[#E8B86A]/10 px-3 py-1 text-xs font-medium tracking-wide text-[#E8B86A]">
-              <FaLightbulb className="text-xs" /> TU VOZ CUENTA
-            </div>
-            <h1 className="mt-4 text-4xl font-black tracking-tight sm:text-5xl" style={{ fontFamily: "Impact, sans-serif" }}>
-              SUGIERE
-            </h1>
-            <p className="mt-2 text-lg font-bold tracking-[0.2em] text-[#E8B86A]">¿QUÉ QUIERES VER?</p>
-            <p className="mt-3 max-w-md text-sm leading-relaxed text-white/60">
-              Propón la próxima película de Café Respiro. Las más sugeridas entran a votación.
-            </p>
-          </div>
-        </div>
-      </section>
+      <PageHero
+        title="SUGIERE"
+        subtitle="¿QUÉ QUIERES VER?"
+        description="Propón la próxima película de Café Respiro. Las más sugeridas entran a votación."
+        image="https://images.unsplash.com/photo-1511920170033-f8396924c348?w=1600&h=700&fit=crop"
+        alt="Café"
+      />
 
       <div className="mx-auto max-w-[1280px] px-4 py-6 sm:px-6 lg:px-8">
         <div className="grid gap-6 lg:grid-cols-[1fr_380px]">

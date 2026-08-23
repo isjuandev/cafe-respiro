@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { FaFilm, FaLightbulb, FaUsers, FaCalendarAlt, FaClock, FaHeart, FaRegHeart, FaArrowRight, FaWhatsapp } from "react-icons/fa";
+import { PageHero } from "@/components/PageHero";
 
 type Sugerencia = {
   id: string;
@@ -152,30 +153,13 @@ export default function VotarPage() {
 
   return (
     <div className="bg-[#050507] text-white">
-      {/* HERO */}
-      <section className="relative overflow-hidden border-b border-white/5">
-        <div className="absolute inset-0">
-          <img src="https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=1600&h=700&fit=crop" alt="Cine" className="h-full w-full object-cover opacity-30" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#050507] via-[#050507]/80 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#050507] to-transparent" />
-        </div>
-        <div className="absolute right-0 top-0 hidden h-full w-[55%] lg:block">
-          <img src="https://images.unsplash.com/photo-1440404653325-ab127d49abc1?w=800&h=600&fit=crop" alt="Proyector" className="h-full w-full object-cover object-left opacity-90" style={{ maskImage: "linear-gradient(to left, black 60%, transparent)" }} />
-          <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#050507]" />
-          <div className="absolute left-[30%] top-1/2 h-32 w-64 -translate-y-1/2 bg-gradient-to-r from-white/20 to-transparent blur-2xl" style={{ transform: "translateY(-50%) rotate(-5deg)" }} />
-        </div>
-        <div className="relative mx-auto max-w-[1280px] px-4 py-10 sm:px-6 sm:py-12 lg:px-8 lg:py-16">
-          <div className="max-w-2xl">
-            <h1 className="text-6xl font-black tracking-tight sm:text-7xl lg:text-[84px] lg:leading-none" style={{ fontFamily: "Impact, sans-serif", letterSpacing: "-0.02em" }}>
-              VOTA
-            </h1>
-            <p className="mt-2 text-lg font-bold tracking-[0.2em] text-[#E8B86A] sm:text-xl">TÚ ELIGES QUÉ VEMOS</p>
-            <p className="mt-4 max-w-md text-sm leading-relaxed text-white/70">
-              Cada voto cuenta. La película más votada será parte de nuestra próxima función.
-            </p>
-          </div>
-        </div>
-      </section>
+      <PageHero
+        title="VOTA"
+        subtitle="TÚ ELIGES QUÉ VEMOS"
+        description="Cada voto cuenta. La película más votada será parte de nuestra próxima función."
+        image="https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=1600&h=700&fit=crop"
+        alt="Proyector"
+      />
 
       <div className="mx-auto max-w-[1280px] px-4 py-6 sm:px-6 lg:px-8">
         <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
