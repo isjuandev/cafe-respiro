@@ -58,6 +58,17 @@ export default function AdminPage() {
   const [createSuccess, setCreateSuccess] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
+  // Biblioteca
+  type Pelicula = { id: string; titulo: string; director?: string | null; anio?: number | null; tituloNormalizado?: string | null; _count?: { funciones: number } };
+  const [peliculas, setPeliculas] = useState<Pelicula[] | null>(null);
+  const [peliculaForm, setPeliculaForm] = useState({ titulo: "", director: "", anio: "", duracionMin: "", sinopsis: "" });
+  const [peliculaError, setPeliculaError] = useState<string | null>(null);
+  const [peliculaSuccess, setPeliculaSuccess] = useState<string | null>(null);
+  const [showPeliculaForm, setShowPeliculaForm] = useState(false);
+  const [programarPeliculaId, setProgramarPeliculaId] = useState("");
+  const [programarError, setProgramarError] = useState<string | null>(null);
+  const [programarSuccess, setProgramarSuccess] = useState<string | null>(null);
+
   async function checkAuth() {
     const res = await fetch("/api/admin/me", { credentials: "include" });
     if (!res.ok) {
@@ -67,18 +78,30 @@ export default function AdminPage() {
     return true;
   }
 
+  async function loadPeliculas() {
+    try {
+      const res = await fetch("/api/admin/peliculas", { credentials: "include" });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      setPeliculas(data.peliculas);
+    } catch {}
+  }
+
   async function loadAll() {
     try {
-      const [sRes, fRes] = await Promise.all([
+      const [sRes, fRes, pRes] = await Promise.all([
         fetch("/api/admin/sugerencias", { credentials: "include" }),
         fetch("/api/funciones", { credentials: "include" }),
+        fetch("/api/admin/peliculas", { credentials: "include" }),
       ]);
       if (!sRes.ok) throw new Error(await sRes.text());
       if (!fRes.ok) throw new Error(await fRes.text());
       const sData = await sRes.json();
       const fData = await fRes.json();
+      const pData = pRes.ok ? await pRes.json() : { peliculas: [] };
       setSugerencias(sData.sugerencias);
       setFunciones(fData.funciones);
+      setPeliculas(pData.peliculas);
       // Cargar reservas de la primera función para dashboard
       if (fData.funciones.length > 0) {
         const fid = fData.funciones[0].id;
@@ -160,6 +183,72 @@ export default function AdminPage() {
       setReservasRecientes(data.reservas.slice(0, 5));
     } catch (e) {
       setReservasRecientes([]);
+    }
+  }
+
+  async function crearPelicula(e: React.FormEvent) {
+    e.preventDefault();
+    setPeliculaError(null);
+    setPeliculaSuccess(null);
+    try {
+      const res = await fetch("/api/admin/peliculas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          titulo: peliculaForm.titulo.trim(),
+          director: peliculaForm.director.trim() || undefined,
+          anio: peliculaForm.anio ? Number(peliculaForm.anio) : undefined,
+          duracionMin: peliculaForm.duracionMin ? Number(peliculaForm.duracionMin) : undefined,
+          sinopsis: peliculaForm.sinopsis.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Error");
+      if (data.duplicada) {
+        setPeliculaError(data.aviso || "Película muy similar ya existe en biblioteca");
+        return;
+      }
+      setPeliculaSuccess(`Película "${data.pelicula.titulo}" creada`);
+      setPeliculaForm({ titulo: "", director: "", anio: "", duracionMin: "", sinopsis: "" });
+      await loadPeliculas();
+    } catch (err) {
+      setPeliculaError(err instanceof Error ? err.message : "Error");
+    }
+  }
+
+  async function crearPeliculaDesdeSugerencia(sugerenciaId: string) {
+    try {
+      const res = await fetch(`/api/admin/sugerencias/${sugerenciaId}/pelicula`, { method: "POST", credentials: "include" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Error");
+      await loadAll();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Error");
+    }
+  }
+
+  async function programarDesdePelicula(e: React.FormEvent) {
+    e.preventDefault();
+    setProgramarError(null);
+    setProgramarSuccess(null);
+    try {
+      const peliculaId = programarPeliculaId;
+      const fechaHora = (document.getElementById("prog-fecha") as HTMLInputElement)?.value;
+      const cupo = Number((document.getElementById("prog-cupo") as HTMLInputElement)?.value);
+      if (!peliculaId || !fechaHora) throw new Error("Elige película y fecha");
+      const res = await fetch(`/api/admin/peliculas/${peliculaId}/funciones`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ fechaHora: new Date(fechaHora).toISOString(), cupoTotal: cupo }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Error");
+      setProgramarSuccess(`Función programada: ${data.funcion.pelicula.titulo}`);
+      await loadAll();
+    } catch (err) {
+      setProgramarError(err instanceof Error ? err.message : "Error");
     }
   }
 
@@ -352,6 +441,98 @@ export default function AdminPage() {
                 pendientes <span className="ml-auto text-[#E8B86A]"><FaArrowUp className="text-xs" /></span>
               </div>
             </div>
+          </div>
+
+          {/* BIBLIOTECA */}
+          <div className="mt-4 rounded-xl border border-white/10 bg-[#141414] p-5">
+            <div className="flex items-center justify-between">
+              <h2 className="flex items-center gap-2 text-xs font-bold tracking-[0.15em] text-white">
+                <FaFilm className="text-[#E8B86A]" /> BIBLIOTECA
+              </h2>
+              <button onClick={() => setShowPeliculaForm(!showPeliculaForm)} className="rounded-lg bg-[#E8B86A] px-3 py-1.5 text-xs font-bold text-black hover:bg-[#D4A574]">
+                + Nueva película
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-white/40">Catálogo para programar funciones. Sin unique duro: si el título es muy similar, avisa.</p>
+            {showPeliculaForm && (
+              <form onSubmit={crearPelicula} className="mt-4 grid gap-3 rounded-xl border border-white/10 bg-[#0A0A0A] p-4 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <label className="text-xs text-white/60">Título *</label>
+                  <input value={peliculaForm.titulo} onChange={(e) => setPeliculaForm({ ...peliculaForm, titulo: e.target.value })} placeholder="Ej: Dune" className="mt-1 w-full rounded-lg border border-white/10 bg-[#141414] px-3 py-2 text-sm text-white" required />
+                </div>
+                <div>
+                  <label className="text-xs text-white/60">Director</label>
+                  <input value={peliculaForm.director} onChange={(e) => setPeliculaForm({ ...peliculaForm, director: e.target.value })} placeholder="Villeneuve" className="mt-1 w-full rounded-lg border border-white/10 bg-[#141414] px-3 py-2 text-sm text-white" />
+                </div>
+                <div>
+                  <label className="text-xs text-white/60">Año</label>
+                  <input type="number" value={peliculaForm.anio} onChange={(e) => setPeliculaForm({ ...peliculaForm, anio: e.target.value })} placeholder="2021" className="mt-1 w-full rounded-lg border border-white/10 bg-[#141414] px-3 py-2 text-sm text-white" />
+                </div>
+                <div>
+                  <label className="text-xs text-white/60">Duración (min)</label>
+                  <input type="number" value={peliculaForm.duracionMin} onChange={(e) => setPeliculaForm({ ...peliculaForm, duracionMin: e.target.value })} placeholder="155" className="mt-1 w-full rounded-lg border border-white/10 bg-[#141414] px-3 py-2 text-sm text-white" />
+                </div>
+                <div>
+                  <label className="text-xs text-white/60">Poster URL</label>
+                  <input value={peliculaForm.sinopsis} onChange={(e) => setPeliculaForm({ ...peliculaForm, sinopsis: e.target.value })} placeholder="Sinopsis corta" className="mt-1 w-full rounded-lg border border-white/10 bg-[#141414] px-3 py-2 text-sm text-white" />
+                </div>
+                <div className="sm:col-span-2">
+                  {peliculaError && <p className="text-xs text-amber-300">{peliculaError}</p>}
+                  {peliculaSuccess && <p className="text-xs text-green-400">{peliculaSuccess}</p>}
+                  <button type="submit" className="w-full rounded-lg bg-[#E8B86A] py-2 text-sm font-bold text-black">Guardar en biblioteca</button>
+                  <p className="mt-1 text-[10px] text-white/20">getGenre() sigue siendo heurística director→género (deuda documentada).</p>
+                </div>
+              </form>
+            )}
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {(peliculas || []).slice(0, 6).map((p) => (
+                <div key={p.id} className="flex items-center justify-between rounded-lg bg-white/[0.03] px-3 py-2">
+                  <div className="truncate">
+                    <div className="text-xs font-medium text-white truncate max-w-[150px]">{p.titulo}</div>
+                    <div className="text-[10px] text-white/40">
+                      {p.director || "—"} {p.anio ? `· ${p.anio}` : ""}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setProgramarPeliculaId(p.id);
+                      document.getElementById("prog-pelicula")?.scrollIntoView({ behavior: "smooth" });
+                    }}
+                    className="rounded bg-white/10 px-2 py-1 text-xs text-white/70 hover:bg-[#E8B86A] hover:text-black"
+                  >
+                    Programar
+                  </button>
+                </div>
+              ))}
+              {(!peliculas || peliculas.length === 0) && <p className="text-xs text-white/30">Biblioteca vacía. Crea la primera película.</p>}
+            </div>
+
+            <form onSubmit={programarDesdePelicula} className="mt-4 flex flex-wrap items-end gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-4">
+              <div className="flex-1 min-w-[160px]">
+                <label className="text-xs text-white/60">Película</label>
+                <select id="prog-pelicula" value={programarPeliculaId} onChange={(e) => setProgramarPeliculaId(e.target.value)} className="mt-1 w-full rounded-lg border border-white/10 bg-[#141414] px-3 py-2 text-sm text-white" required>
+                  <option value="">— Elige de biblioteca —</option>
+                  {(peliculas || []).map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.titulo}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-white/60">Fecha y hora</label>
+                <input id="prog-fecha" type="datetime-local" required className="mt-1 rounded-lg border border-white/10 bg-[#141414] px-3 py-2 text-sm text-white" />
+              </div>
+              <div>
+                <label className="text-xs text-white/60">Cupo</label>
+                <input id="prog-cupo" type="number" defaultValue={30} min={1} max={200} className="mt-1 w-20 rounded-lg border border-white/10 bg-[#141414] px-3 py-2 text-sm text-white" />
+              </div>
+              <button type="submit" className="rounded-lg bg-[#E8B86A] px-4 py-2 text-sm font-bold text-black">
+                Programar
+              </button>
+            </form>
+            {programarError && <p className="mt-2 text-xs text-red-300">{programarError}</p>}
+            {programarSuccess && <p className="mt-2 text-xs text-green-300">{programarSuccess}</p>}
           </div>
 
           <div className="mt-4 grid gap-4 lg:grid-cols-3">

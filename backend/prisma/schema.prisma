@@ -14,20 +14,23 @@ enum SugerenciaEstado {
 }
 
 model Pelicula {
-  id          String   @id @default(cuid())
-  titulo      String
-  director    String?
-  anio        Int?
-  duracionMin Int?
-  sinopsis    String?  @db.Text
-  posterUrl   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                String   @id @default(cuid())
+  titulo            String
+  tituloNormalizado String? // nullable para migración; se backfillea en código (ver normalización Sprint 1)
+  director          String?
+  anio              Int?
+  duracionMin       Int?
+  sinopsis          String?  @db.Text
+  posterUrl         String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   funciones   Funcion[]
   sugerencias Sugerencia[]
 
   @@index([titulo])
+  @@index([tituloNormalizado])
+  // Duplicado de catálogo: sin unique duro (remakes), solo aviso vía búsqueda normalizada (ver Sprint 1)
 }
 
 model Sugerencia {

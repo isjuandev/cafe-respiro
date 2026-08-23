@@ -1,14 +1,20 @@
-import { Controller, Post, Get, Param, Body, UseGuards, NotFoundException, ConflictException, BadRequestException, Logger } from '@nestjs/common';
+import { Controller, Post, Get, Param, Body, UseGuards, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdminGuard } from '../common/guards/admin.guard';
 import { CreateFuncionDto } from './dto/create-funcion.dto';
+import { PeliculasService } from '../peliculas/peliculas.service';
+import { FuncionesService } from '../funciones/funciones.service';
 
 @UseGuards(AdminGuard)
 @Controller('admin/funciones')
 export class AdminFuncionesController {
-  private logger = new Logger(AdminFuncionesController.name);
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private peliculasService: PeliculasService,
+    private funcionesService: FuncionesService,
+  ) {}
 
+  // Atajo legacy: crear función desde sugerencia PROGRAMADA (reusa normalización y servicio compartido)
   @Post()
   async create(@Body() dto: CreateFuncionDto) {
     const sugerencia = await this.prisma.sugerencia.findUnique({ where: { id: dto.sugerenciaId } });
@@ -17,42 +23,16 @@ export class AdminFuncionesController {
       throw new ConflictException('Solo se puede crear función desde una sugerencia PROGRAMADA');
     }
 
-    // Upsert Pelicula desde sugerencia.titulo si no tiene peliculaId
+    // Reusa normalización Sprint 1: busca o crea película de forma deduplicada
     let peliculaId = sugerencia.peliculaId;
     if (!peliculaId) {
-      const pelicula = await this.prisma.pelicula.create({
-        data: {
-          titulo: sugerencia.titulo,
-          director: sugerencia.director,
-          anio: sugerencia.anio,
-        },
-      });
+      const pelicula = await this.peliculasService.findOrCreateFromSugerencia(sugerencia);
       peliculaId = pelicula.id;
-      // Vincular sugerencia a pelicula
-      await this.prisma.sugerencia.update({
-        where: { id: sugerencia.id },
-        data: { peliculaId },
-      });
+      await this.prisma.sugerencia.update({ where: { id: sugerencia.id }, data: { peliculaId } });
     }
 
-    const fechaHora = new Date(dto.fechaHora);
-    if (isNaN(fechaHora.getTime())) throw new BadRequestException('fechaHora inválida');
-    if (fechaHora <= new Date()) throw new BadRequestException('fechaHora debe ser futura');
-
-    try {
-      const funcion = await this.prisma.funcion.create({
-        data: {
-          peliculaId: peliculaId!,
-          fechaHora,
-          cupoTotal: dto.cupoTotal,
-        },
-        include: { pelicula: true },
-      });
-      return { funcion };
-    } catch (e: any) {
-      if (e.code === 'P2002') throw new ConflictException('Ya existe una función para esa película en esa fecha/hora');
-      throw e;
-    }
+    const funcion = await this.funcionesService.crear(peliculaId!, new Date(dto.fechaHora), Number(dto.cupoTotal));
+    return { funcion };
   }
 
   @Get(':id/reservas')

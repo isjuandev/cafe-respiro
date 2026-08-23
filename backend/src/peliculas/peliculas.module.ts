@@ -1,7 +1,12 @@
 import { Module } from '@nestjs/common';
+import { PeliculasService } from './peliculas.service';
+import { PeliculasController } from './peliculas.controller';
+import { FuncionesModule } from '../funciones/funciones.module';
 
 @Module({
-  controllers: [],
-  providers: [],
+  imports: [FuncionesModule],
+  controllers: [PeliculasController],
+  providers: [PeliculasService],
+  exports: [PeliculasService],
 })
 export class PeliculasModule {}

@@ -40,6 +40,8 @@ function formatShortDate(iso: string) {
 }
 
 function getGenre(p: Pelicula) {
+  // DEUDA TÉCNICA: heurística director->género, un director no determina género.
+  // Se mantiene para MVP sin campo genero en Pelicula; reemplazar cuando se añada genero real.
   if (p.titulo.toLowerCase().includes("chihiro")) return "Animación";
   if (p.titulo.toLowerCase().includes("paras")) return "Drama";
   if (p.titulo.toLowerCase().includes("whiplash")) return "Drama";
