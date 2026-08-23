@@ -174,14 +174,14 @@ export default function CarteleraPage() {
       ]
     : [null, null, null];
 
-  // Datos para hero: si no hay datos reales, usamos los de la imagen
-  const heroTitulo = hero?.pelicula.titulo || "INTERSTELLAR";
-  const heroSinopsis = hero?.pelicula.sinopsis || "Un viaje más allá de las estrellas. La humanidad depende de un pequeño grupo que se atreve a lo imposible.";
-  const heroMeta = hero ? `${getGenre(hero.pelicula)} · ${hero.pelicula.duracionMin ? `${Math.floor(hero.pelicula.duracionMin / 60)}h ${hero.pelicula.duracionMin % 60}min` : "2h 49min"}` : "Ciencia ficción · 2h 49min";
-  const heroFecha = hero ? formatHeroDate(hero.fechaHora) : "HOY · 7:00 PM";
-  const heroCupos = hero ? `${hero.cuposOcupados} / ${hero.cupoTotal} cupos` : "5 / 8 cupos";
-  const heroCuposDisponibles = hero ? hero.cuposDisponibles : 3;
-  const heroBg = getHeroBg(heroTitulo);
+  // Datos para hero: si no hay datos reales, mostramos Próximamente sin detalles (consume backend siempre)
+  const heroTitulo = hero?.pelicula.titulo || "PRÓXIMAMENTE";
+  const heroSinopsis = hero?.pelicula.sinopsis || "Próximamente nuevas funciones. Sugiere una película y ayúdanos a programar la cartelera.";
+  const heroMeta = hero ? `${getGenre(hero.pelicula)} · ${hero.pelicula.duracionMin ? `${Math.floor(hero.pelicula.duracionMin / 60)}h ${hero.pelicula.duracionMin % 60}min` : ""}`.replace(/ · $/, "") : "";
+  const heroFecha = hero ? formatHeroDate(hero.fechaHora) : "PRÓXIMAMENTE";
+  const heroCupos = hero ? `${hero.cuposOcupados} / ${hero.cupoTotal} cupos` : "";
+  const heroCuposDisponibles = hero ? hero.cuposDisponibles : 0;
+  const heroBg = hero ? getHeroBg(heroTitulo) : "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1600&h=900&fit=crop";
   const heroId = hero?.id || "hero-placeholder";
 
   return (
@@ -210,22 +210,22 @@ export default function CarteleraPage() {
             <h1 className="mt-2 text-5xl font-black tracking-tight sm:text-6xl lg:text-[72px] lg:leading-none">
               {heroTitulo.toUpperCase()}
             </h1>
-            <p className="mt-3 text-sm text-white/70">{heroMeta}</p>
+            {heroMeta && <p className="mt-3 text-sm text-white/70">{heroMeta}</p>}
             <p className="mt-4 max-w-md text-sm leading-relaxed text-white/80">{heroSinopsis}</p>
 
-            <div className="mt-6 flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <FaStar className="text-[#E8B86A] text-sm" />
-                <span className="text-sm font-medium">4.8</span>
+            {hero && (
+              <div className="mt-6 flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <FaStar className="text-[#E8B86A] text-sm" />
+                  <span className="text-sm font-medium">4.8</span>
+                </div>
+                <div className="h-6 w-px bg-white/10" />
+                <div className="flex items-center gap-2 text-sm">
+                  <FaUsers className="text-[#E8B86A] text-sm" />
+                  <span className={heroCuposDisponibles === 0 ? "text-red-400" : "text-white"}>{heroCuposDisponibles > 0 ? heroCupos : "Completo"}</span>
+                </div>
               </div>
-              <div className="h-6 w-px bg-white/10" />
-              <div className="flex items-center gap-2 text-sm">
-                <FaUsers className="text-[#E8B86A] text-sm" />
-                <span className={heroCuposDisponibles === 0 ? "text-red-400" : "text-white"}>
-                  {heroCuposDisponibles > 0 ? heroCupos : "Completo"}
-                </span>
-              </div>
-            </div>
+            )}
 
             {hero ? (
               <>
@@ -289,12 +289,12 @@ export default function CarteleraPage() {
                 )}
               </>
             ) : (
-              <Link
-                href="/sugerencias"
-                className="mt-6 inline-flex items-center gap-3 rounded-lg bg-[#E8B86A] px-8 py-3.5 text-sm font-bold tracking-wide text-black hover:bg-[#D4A574]"
+              <button
+                disabled
+                className="mt-6 inline-flex items-center gap-3 rounded-lg bg-white/10 px-8 py-3.5 text-sm font-bold tracking-wide text-white/40 cursor-not-allowed"
               >
-                EXPLORAR CARTELERA <FaArrowRight className="text-xs" />
-              </Link>
+                PRÓXIMAMENTE
+              </button>
             )}
           </div>
 
@@ -329,43 +329,47 @@ export default function CarteleraPage() {
         <div className="mt-6 grid gap-4 md:grid-cols-3">
           {proximas.map((f, idx) => {
             const isPlaceholder = !f;
-            const titulo = f?.pelicula.titulo || (idx === 2 ? "?" : "WHIPLASH");
-            const isSorpresa = isPlaceholder && idx === 2;
-            const cupos = f ? `${f.cuposOcupados} / ${f.cupoTotal} cupos` : isSorpresa ? "8 / 8 cupos" : "6 / 8 cupos";
-            const lleno = f ? f.cuposDisponibles === 0 : isSorpresa;
-            const fecha = f ? formatShortDate(f.fechaHora) : idx === 0 ? { weekday: "Viernes 28", time: "7:00 PM" } : idx === 1 ? { weekday: "Sábado 29", time: "7:00 PM" } : { weekday: "Domingo 30", time: "7:00 PM" };
-            const meta = f ? `${getGenre(f.pelicula)} · ${f.pelicula.duracionMin ? `${Math.floor(f.pelicula.duracionMin / 60)}h ${f.pelicula.duracionMin % 60}min` : "1h 46min"}` : isSorpresa ? "Sorpresa" : "Drama · 1h 46min";
-            const poster = isSorpresa ? "" : getPoster(titulo);
+            const titulo = f?.pelicula.titulo || "PRÓXIMAMENTE";
+            const cupos = f ? `${f.cuposOcupados} / ${f.cupoTotal} cupos` : "";
+            const lleno = f ? f.cuposDisponibles === 0 : true;
+            const fecha = f ? formatShortDate(f.fechaHora) : null;
+            const meta = f ? `${getGenre(f.pelicula)} · ${f.pelicula.duracionMin ? `${Math.floor(f.pelicula.duracionMin / 60)}h ${f.pelicula.duracionMin % 60}min` : ""}`.replace(/ · $/, "") : "";
+            const poster = f ? getPoster(titulo) : "";
             const fid = f?.id || `placeholder-${idx}`;
 
             return (
               <div key={fid} className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#141414]">
-                {isSorpresa ? (
-                  <div className="relative h-48 bg-gradient-to-b from-[#1a0f0f] to-black flex items-center justify-center">
+                {isPlaceholder ? (
+                  <div className="relative h-48 bg-gradient-to-b from-[#0f0f0f] to-black flex flex-col items-center justify-center p-6">
                     <div className="text-center">
-                      <div className="text-6xl font-light text-[#E8B86A]">?</div>
-                      <div className="mt-2 h-1 w-12 mx-auto bg-[#E8B86A]/30 rounded" />
-                    </div>
-                    <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-black/80 to-transparent" />
-                    <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-1 pb-2">
-                      <div className="h-8 w-16 bg-black/60 rounded-t-sm" style={{ background: "linear-gradient(to top, #1a0000, #3a0000)" }} />
+                      <div className="text-sm font-bold tracking-[0.2em] text-white/60">PRÓXIMAMENTE</div>
+                      <div className="mt-2 h-px w-12 mx-auto bg-white/10" />
+                      <p className="mt-3 text-xs text-white/30">Consume el backend</p>
                     </div>
                   </div>
                 ) : (
                   <div className="relative h-48 overflow-hidden">
                     <img src={poster} alt={titulo} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-transparent to-transparent" />
-                    {!isPlaceholder && <div className="absolute top-3 left-3 rounded bg-black/60 px-2 py-1 text-[10px] font-bold tracking-widest text-white backdrop-blur">{titulo.toUpperCase()}</div>}
-                    {isPlaceholder && <div className="absolute inset-0 flex items-center justify-center bg-black/40"><span className="text-2xl font-light tracking-[0.3em] text-white/90">WHIPLASH</span></div>}
+                    <div className="absolute top-3 left-3 rounded bg-black/60 px-2 py-1 text-[10px] font-bold tracking-widest text-white backdrop-blur">{titulo.toUpperCase()}</div>
                   </div>
                 )}
                 <div className="p-4">
-                  <div className="text-xs font-bold tracking-wide text-white">{typeof fecha === "string" ? fecha : fecha.weekday}</div>
-                  <div className="text-xs font-bold tracking-wide text-white">{typeof fecha === "string" ? "" : fecha.time}</div>
-                  <div className="mt-2 text-xs text-white/60">{meta}</div>
-                  <div className={`mt-3 flex items-center gap-1.5 text-xs ${lleno ? "text-white/40" : "text-[#E8B86A]"}`}>
-                    <FaUsers className="text-xs" /> {cupos}
-                  </div>
+                  {fecha ? (
+                    <>
+                      <div className="text-xs font-bold tracking-wide text-white">{fecha.weekday}</div>
+                      <div className="text-xs font-bold tracking-wide text-white">{fecha.time}</div>
+                      <div className="mt-2 text-xs text-white/60">{meta}</div>
+                      <div className={`mt-3 flex items-center gap-1.5 text-xs ${lleno ? "text-white/40" : "text-[#E8B86A]"}`}>
+                        <FaUsers className="text-xs" /> {cupos}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-xs font-bold tracking-wide text-white/40">PRÓXIMAMENTE</div>
+                      <div className="mt-2 text-xs text-white/30">Sin fecha programada</div>
+                    </>
+                  )}
 
                   {f ? (
                     <>
@@ -406,10 +410,10 @@ export default function CarteleraPage() {
                     </>
                   ) : (
                     <button
-                      disabled={lleno}
-                      className={`mt-4 w-full rounded-lg border py-2.5 text-xs font-bold tracking-wide ${lleno ? "border-white/10 bg-white/5 text-white/30" : "border-[#E8B86A]/50 text-[#E8B86A] hover:bg-[#E8B86A] hover:text-black"}`}
+                      disabled
+                      className="mt-4 w-full cursor-not-allowed rounded-lg border border-white/10 bg-white/5 py-2.5 text-xs font-bold tracking-wide text-white/30"
                     >
-                      {lleno ? "COMPLETO" : "RESERVAR"}
+                      PRÓXIMAMENTE
                     </button>
                   )}
                 </div>
