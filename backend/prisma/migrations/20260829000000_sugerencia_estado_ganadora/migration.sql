@@ -1,4 +1,7 @@
 -- Máquina de estados consistente: PENDIENTE -> GANADORA -> PROGRAMADA -> DESCARTADA
+-- 0. Eliminar índice parcial que depende del enum viejo (evita error de operador al cambiar tipo)
+DROP INDEX IF EXISTS "Sugerencia_tituloNormalizado_activo_key";
+
 -- 1. Nuevo valor enum (recreación transaccional segura, evita ALTER TYPE ADD VALUE en transacción)
 CREATE TYPE "SugerenciaEstado_new" AS ENUM ('PENDIENTE', 'GANADORA', 'PROGRAMADA', 'DESCARTADA');
 ALTER TABLE "Sugerencia" ALTER COLUMN "estado" DROP DEFAULT;
@@ -9,9 +12,10 @@ ALTER TYPE "SugerenciaEstado_new" RENAME TO "SugerenciaEstado";
 
 -- 2. Compatibilidad datos existentes: normalizar PROGRAMADA huérfana antes de crear constraints
 -- Si existe PROGRAMADA sin peliculaId o sin función futura, retroceder a GANADORA
+-- Uso de ::text evita problemas de tipos enum durante la recreación
 UPDATE "Sugerencia" AS s
-SET estado = 'GANADORA'
-WHERE s.estado = 'PROGRAMADA'
+SET estado = 'GANADORA'::"SugerenciaEstado"
+WHERE s.estado::text = 'PROGRAMADA'
   AND (
     s.peliculaId IS NULL
     OR NOT EXISTS (
