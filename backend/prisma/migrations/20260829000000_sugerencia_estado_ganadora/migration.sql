@@ -17,10 +17,10 @@ UPDATE "Sugerencia" AS s
 SET estado = 'GANADORA'::"SugerenciaEstado"
 WHERE s.estado::text = 'PROGRAMADA'
   AND (
-    s.peliculaId IS NULL
+    s."peliculaId" IS NULL
     OR NOT EXISTS (
       SELECT 1 FROM "Funcion" f
-      WHERE f."peliculaId" = s.peliculaId
+      WHERE f."peliculaId" = s."peliculaId"
         AND f."fechaHora" > NOW()
     )
   );
@@ -30,4 +30,4 @@ DROP INDEX IF EXISTS "Sugerencia_tituloNormalizado_activo_key";
 CREATE UNIQUE INDEX "Sugerencia_tituloNormalizado_activo_key" ON "Sugerencia"("tituloNormalizado") WHERE "estado" IN ('PENDIENTE', 'GANADORA', 'PROGRAMADA');
 
 -- 4. Invariante DB: PROGRAMADA debe tener peliculaId
-ALTER TABLE "Sugerencia" ADD CONSTRAINT "Sugerencia_programada_requiere_pelicula" CHECK (estado != 'PROGRAMADA' OR peliculaId IS NOT NULL);
+ALTER TABLE "Sugerencia" ADD CONSTRAINT "Sugerencia_programada_requiere_pelicula" CHECK (estado != 'PROGRAMADA' OR "peliculaId" IS NOT NULL);
