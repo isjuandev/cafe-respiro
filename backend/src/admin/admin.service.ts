@@ -12,7 +12,7 @@ export class AdminService {
   signToken(): string {
     const secret = process.env.JWT_SECRET || 'dev-secret-min-32-chars';
     const expiresIn = process.env.JWT_EXPIRES_IN || '8h';
-    return jwt.sign({ sub: 'admin' }, secret, { expiresIn } as any);
+    return jwt.sign({ sub: 'admin', role: 'admin' }, secret, { expiresIn } as any);
   }
 
   verifyToken(token: string) {

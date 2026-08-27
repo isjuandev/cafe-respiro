@@ -31,7 +31,7 @@ export function Header() {
           </div>
         </Link>
 
-        <nav className="hidden items-center gap-8 md:flex">
+        <nav className="hidden items-center gap-6 lg:gap-8 md:flex">
           <Link href="/" className={linkClass("/")}>
             Cartelera
             {isActive("/") && <span className="absolute bottom-0 left-0 h-[2px] w-full bg-[#E8B86A]" />}
@@ -44,21 +44,25 @@ export function Header() {
             Sugerir
             {isActive("/sugerencias") && <span className="absolute bottom-0 left-0 h-[2px] w-full bg-[#E8B86A]" />}
           </Link>
-          <Link href="/" className="py-2 text-sm font-medium tracking-wide text-white/70 hover:text-white">
+          <Link href="/menu" className={linkClass("/menu")}>
+            Menú
+            {isActive("/menu") && <span className="absolute bottom-0 left-0 h-[2px] w-full bg-[#E8B86A]" />}
+          </Link>
+          <Link href="/dashboard" className={linkClass("/dashboard")}>
             Mis reservas
+            {isActive("/dashboard") && <span className="absolute bottom-0 left-0 h-[2px] w-full bg-[#E8B86A]" />}
           </Link>
         </nav>
 
         <div className="flex items-center gap-3">
           <nav className="flex items-center gap-4 md:hidden">
-            <Link href={pathname === "/" ? "/votar" : "/"} className="text-sm font-medium text-white">
-              {pathname === "/" ? "Votar" : "Cartelera"}
-            </Link>
+            <Link href="/menu" className="text-sm font-medium text-white">Menú</Link>
+            <Link href="/dashboard" className="text-sm font-medium text-white">Reservas</Link>
           </nav>
           <Link
-            href="/admin/login"
+            href="/login"
             className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white/80 hover:border-white/40 hover:text-white"
-            aria-label="Perfil"
+            aria-label="Iniciar sesión"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <circle cx="12" cy="8" r="4.5" />

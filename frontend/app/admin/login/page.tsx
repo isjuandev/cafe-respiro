@@ -16,15 +16,15 @@ export default function AdminLoginPage() {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/login", {
+      const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(form),
+        body: JSON.stringify({ usuario: form.username, password: form.password }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Credenciales inválidas");
-      router.push("/admin");
+      router.push(data.role === "cliente" ? "/dashboard" : "/admin");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error");
     } finally {

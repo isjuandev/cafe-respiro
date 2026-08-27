@@ -2,7 +2,8 @@ import { Controller, Post, Get, Body, Res, Req, UseGuards, UnauthorizedException
 import { Response, Request } from 'express';
 import { AdminService } from './admin.service';
 import { LoginDto } from './dto/login.dto';
-import { AdminGuard } from '../common/guards/admin.guard';
+import { AuthGuard } from '../common/guards/auth.guard';
+import { RequireRole } from '../common/decorators/require-role.decorator';
 
 @Controller('admin')
 export class AdminController {
@@ -32,7 +33,8 @@ export class AdminController {
     return { ok: true };
   }
 
-  @UseGuards(AdminGuard)
+  @UseGuards(AuthGuard)
+  @RequireRole('admin')
   @Get('me')
   async me(@Req() req: Request) {
     return { authenticated: true, admin: (req as any).admin };

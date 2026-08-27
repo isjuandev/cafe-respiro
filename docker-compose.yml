@@ -31,6 +31,7 @@ services:
       PORT: 3001
       FRONTEND_URL: http://localhost:3000
       NODE_ENV: production
+      TZ: America/Bogota
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
       JWT_SECRET: ${JWT_SECRET:-cambia-este-secreto-en-produccion-min-32-chars}

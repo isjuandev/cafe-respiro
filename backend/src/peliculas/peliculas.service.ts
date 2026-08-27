@@ -34,6 +34,7 @@ export class PeliculasService {
         titulo: dto.titulo.trim(),
         tituloNormalizado,
         director: dto.director?.trim() || null,
+        genero: dto.genero?.trim() || null,
         anio: dto.anio ?? null,
         duracionMin: dto.duracionMin ?? null,
         sinopsis: dto.sinopsis?.trim() || null,
@@ -44,7 +45,15 @@ export class PeliculasService {
   }
 
   // Helper para upsert desde sugerencia (reusa misma normalización)
-  async findOrCreateFromSugerencia(sugerencia: { titulo: string; director?: string | null; anio?: number | null }) {
+  async findOrCreateFromSugerencia(sugerencia: {
+    titulo: string;
+    director?: string | null;
+    genero?: string | null;
+    anio?: number | null;
+    duracionMin?: number | null;
+    sinopsis?: string | null;
+    posterUrl?: string | null;
+  }) {
     const tituloNormalizado = normalizeTitulo(sugerencia.titulo);
     let pelicula = await this.prisma.pelicula.findFirst({ where: { tituloNormalizado } });
     if (pelicula) return pelicula;
@@ -53,7 +62,11 @@ export class PeliculasService {
         titulo: sugerencia.titulo.trim(),
         tituloNormalizado,
         director: sugerencia.director?.trim() || null,
+        genero: sugerencia.genero?.trim() || null,
         anio: sugerencia.anio ?? null,
+        duracionMin: sugerencia.duracionMin ?? null,
+        sinopsis: sugerencia.sinopsis?.trim() || null,
+        posterUrl: sugerencia.posterUrl?.trim() || null,
       },
     });
     return pelicula;

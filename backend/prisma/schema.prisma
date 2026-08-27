@@ -9,8 +9,29 @@ datasource db {
 
 enum SugerenciaEstado {
   PENDIENTE
+  GANADORA
   PROGRAMADA
   DESCARTADA
+}
+
+enum VotacionEstado {
+  ACTIVA
+  CERRADA
+}
+
+model Votacion {
+  id          String         @id @default(cuid())
+  iniciaAt    DateTime
+  cierraAt    DateTime
+  estado      VotacionEstado @default(ACTIVA)
+  ganadoraId  String?        @unique
+  ganadora    Sugerencia?    @relation("VotacionGanadora", fields: [ganadoraId], references: [id], onDelete: SetNull)
+  sugerencias Sugerencia[]   @relation("VotacionSugerencias")
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([estado])
+  @@index([cierraAt])
 }
 
 model Pelicula {
@@ -19,6 +40,7 @@ model Pelicula {
   tituloNormalizado String? // nullable para migración; se backfillea en código (ver normalización Sprint 1)
   director          String?
   anio              Int?
+  genero            String? // ej: Animación, Drama, Ciencia ficción — nullable hasta que se conozca
   duracionMin       Int?
   sinopsis          String?  @db.Text
   posterUrl         String?
@@ -39,12 +61,19 @@ model Sugerencia {
   tituloNormalizado String
   director          String?
   anio              Int?
+  genero            String? // nullable, proviene de backend si se conoce, no heurística frontend
+  duracionMin       Int?
+  sinopsis          String?          @db.Text
+  posterUrl         String? // si no se conoce, null y frontend usa fallback neutro
   comentario        String?          @db.Text
   nombreSolicitante String
   contacto          String
   estado            SugerenciaEstado @default(PENDIENTE)
   peliculaId        String?
   pelicula          Pelicula?        @relation(fields: [peliculaId], references: [id], onDelete: SetNull)
+  votacionId        String?
+  votacion          Votacion?        @relation("VotacionSugerencias", fields: [votacionId], references: [id], onDelete: SetNull)
+  votacionGanadora  Votacion?        @relation("VotacionGanadora")
   votos             Voto[]
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
@@ -53,7 +82,7 @@ model Sugerencia {
   @@index([estado])
   @@index([tituloNormalizado])
   // El constraint único parcial para duplicados activos se crea vía migración SQL:
-  // CREATE UNIQUE INDEX "Sugerencia_tituloNormalizado_activo_key" ON "Sugerencia"("tituloNormalizado") WHERE "estado" IN ('PENDIENTE', 'PROGRAMADA')
+  // CREATE UNIQUE INDEX "Sugerencia_tituloNormalizado_activo_key" ON "Sugerencia"("tituloNormalizado") WHERE "estado" IN ('PENDIENTE', 'GANADORA', 'PROGRAMADA')
 }
 
 model Voto {
@@ -78,7 +107,8 @@ model Funcion {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  @@unique([peliculaId, fechaHora])
+  // Sala única: solo 1 función por fecha/hora (19:00 fijo => 1 por día). Migrado desde @@unique([peliculaId, fechaHora]).
+  @@unique([fechaHora])
   @@index([peliculaId])
   @@index([fechaHora])
 }
@@ -105,4 +135,39 @@ model NotificationLog {
 
   @@index([tipo])
   @@index([createdAt])
+}
+
+model CategoriaMenu {
+  id        String     @id @default(cuid())
+  nombre    String
+  orden     Int        @default(0)
+  items     ItemMenu[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([orden])
+}
+
+model ItemMenu {
+  id          String       @id @default(cuid())
+  categoriaId String
+  categoria   CategoriaMenu @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
+  nombre      String
+  descripcion String?      @db.Text
+  precio      Int
+  disponible  Boolean      @default(true)
+  orden       Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([categoriaId, orden])
+  @@index([disponible])
+}
+
+model Usuario {
+  id           String   @id @default(cuid())
+  contacto     String   @unique
+  nombre       String
+  passwordHash String
+  createdAt    DateTime @default(now())
 }

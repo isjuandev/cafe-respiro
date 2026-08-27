@@ -1,0 +1,14 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+type Suggestion = { id: string; titulo: string; nombreSolicitante: string; estado: string; createdAt: string; _count: { votos: number } };
+
+export default function AdminSuggestionsPage() {
+  const [items, setItems] = useState<Suggestion[] | null>(null); const [error, setError] = useState<string | null>(null);
+  async function load() { try { setError(null); const res = await fetch("/api/admin/sugerencias", { credentials: "include" }); if (!res.ok) throw new Error("No se pudieron cargar las sugerencias"); setItems((await res.json()).sugerencias || []); } catch (e) { setError(e instanceof Error ? e.message : "Error"); } }
+  useEffect(() => { load(); }, []);
+  async function update(id: string, estado: string) { try { const res = await fetch(`/api/admin/sugerencias/${id}/estado`, { method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ estado }) }); if (!res.ok) throw new Error("No se pudo actualizar el estado"); await load(); } catch (e) { setError(e instanceof Error ? e.message : "Error"); } }
+  if (items === null && !error) return <div className="h-64 animate-pulse rounded-xl bg-white/5" />;
+  return <div className="space-y-6"><div><h2 className="text-2xl font-bold">Sugerencias</h2><p className="mt-1 text-sm text-white/60">Revisa las películas propuestas y define su estado.</p></div>{error && <div role="alert" className="rounded-lg bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}<button onClick={load} className="ml-3 underline">Reintentar</button></div>}{items?.length === 0 && <div className="surface-card p-8 text-center text-sm text-white/60">Aún no hay sugerencias.</div>}<div className="space-y-3">{items?.map((item) => <article key={item.id} className="surface-card flex flex-wrap items-center gap-4 p-4"><div className="min-w-0 flex-1"><h3 className="truncate font-medium">{item.titulo}</h3><p className="mt-1 text-xs text-white/50">Por {item.nombreSolicitante} · {item._count?.votos || 0} votos · {new Date(item.createdAt).toLocaleDateString("es-CO")}</p></div><span className={`rounded-full px-3 py-1 text-xs ${item.estado === 'GANADORA' ? 'bg-[#E8B86A]/20 text-[#E8B86A]' : item.estado === 'PROGRAMADA' ? 'bg-green-500/20 text-green-300' : item.estado === 'DESCARTADA' ? 'bg-red-500/20 text-red-300' : 'bg-white/10 text-white/60'}`}>{item.estado}</span><select aria-label={`Estado de ${item.titulo}`} value={item.estado} onChange={(e) => update(item.id, e.target.value)} className="control-dark px-3 py-2 text-sm"><option value="PENDIENTE">PENDIENTE</option><option value="GANADORA" disabled>GANADORA (vía votación)</option><option value="PROGRAMADA" disabled>PROGRAMADA (vía función)</option><option value="DESCARTADA">DESCARTADA</option></select></article>)}</div></div>;
+}

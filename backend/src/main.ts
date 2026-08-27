@@ -6,6 +6,12 @@ import * as cookieParser from 'cookie-parser';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use(cookieParser());
+  // Trust proxy para que req.ip respete X-Forwarded-For (Coolify/Nginx)
+  const httpAdapter = app.getHttpAdapter();
+  const instance = httpAdapter.getInstance();
+  if (instance && typeof instance.set === 'function') {
+    instance.set('trust proxy', 1);
+  }
 
   app.setGlobalPrefix('api');
 

@@ -58,6 +58,17 @@
     background: #050507;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+
+  button,
+  a,
+  input,
+  textarea,
+  select {
+    &:focus-visible {
+      outline: 2px solid #E8B86A;
+      outline-offset: 2px;
+    }
+  }
 }
 
 /* Café Respiro custom */
@@ -73,5 +84,18 @@
   }
   .bg-cine {
     background: linear-gradient(180deg, #0a0a0f 0%, #050507 100%);
+  }
+
+  .surface-card {
+    border: 1px solid #FFFFFF1A;
+    border-radius: 0.75rem;
+    background-color: #141414;
+  }
+
+  .control-dark {
+    border: 1px solid #FFFFFF1A;
+    border-radius: 0.75rem;
+    background-color: #0A0A0A;
+    color: #F5F5F5;
   }
 }

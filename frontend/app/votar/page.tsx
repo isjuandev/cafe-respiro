@@ -9,6 +9,12 @@ type Sugerencia = {
   id: string;
   titulo: string;
   comentario?: string | null;
+  director?: string | null;
+  anio?: number | null;
+  genero?: string | null;
+  duracionMin?: number | null;
+  sinopsis?: string | null;
+  posterUrl?: string | null;
   nombreSolicitante: string;
   estado: string;
   createdAt: string;
@@ -20,6 +26,12 @@ type Funcion = {
   fechaHora: string;
   cupoTotal: number;
   cuposDisponibles?: number;
+  pelicula?: { titulo: string; posterUrl?: string | null; genero?: string | null } | null;
+};
+
+type Votacion = {
+  activa: boolean;
+  cierraAt?: string;
 };
 
 const VOTOS_KEY = "cafe-respiro:votos";
@@ -33,24 +45,19 @@ function getVotadas(): string[] {
   }
 }
 
-function getPoster(titulo: string) {
-  const t = titulo.toLowerCase();
-  if (t.includes("interstellar")) return "https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=300&h=400&fit=crop";
-  if (t.includes("chihiro")) return "https://images.unsplash.com/photo-1518709594023-6eab9bab7b23?w=300&h=400&fit=crop&crop=top";
-  if (t.includes("whiplash")) return "https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=300&h=400&fit=crop";
-  if (t.includes("shrek")) return "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=300&h=400&fit=crop";
-  if (t.includes("padrino")) return "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=300&h=400&fit=crop";
-  return "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=300&h=400&fit=crop";
+function formatDuration(min?: number | null) {
+  if (!min) return "";
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${h}h ${m}min`;
 }
 
-function getMeta(titulo: string) {
-  const t = titulo.toLowerCase();
-  if (t.includes("interstellar")) return { genre: "Ciencia ficción", year: "2014", duration: "2h 49min", desc: "Un grupo de exploradores viaja a través de un agujero de gusano en busca de un nuevo hogar para la humanidad." };
-  if (t.includes("chihiro")) return { genre: "Animación", year: "2001", duration: "2h 5min", desc: "Una niña entra en un mundo mágico dominado por dioses y espíritus, donde deberá encontrar la fuerza para regresar con su familia." };
-  if (t.includes("whiplash")) return { genre: "Drama", year: "2014", duration: "1h 46min", desc: "Un joven baterista sueña con la grandeza y se enfrenta a un exigente maestro que lo llevará al límite." };
-  if (t.includes("shrek")) return { genre: "Animación", year: "2004", duration: "1h 33min", desc: "Shrek y Fiona viajan al reino de Muy Muy Lejano para conocer a los padres de ella. La aventura apenas comienza." };
-  if (t.includes("padrino")) return { genre: "Drama", year: "1972", duration: "2h 55min", desc: "La historia de una familia mafiosa y su patriarca." };
-  return { genre: "Cine", year: "", duration: "", desc: "" };
+function getPosterUrl(s: Pick<Sugerencia, "posterUrl">) {
+  return s.posterUrl || "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=300&h=400&fit=crop";
+}
+
+function getGenreLabel(s: Pick<Sugerencia, "genero">) {
+  return s.genero || "Cine";
 }
 
 export default function VotarPage() {
@@ -63,6 +70,8 @@ export default function VotarPage() {
   const [showVotoForm, setShowVotoForm] = useState<string | null>(null);
   const [votoForm, setVotoForm] = useState<Record<string, { nombre: string; contacto: string }>>({});
   const [votoError, setVotoError] = useState<Record<string, string | null>>({});
+  const [votacion, setVotacion] = useState<Votacion | null>(null);
+  const [remainingMs, setRemainingMs] = useState(0);
 
   useEffect(() => {
     setVotadas(getVotadas());
@@ -71,12 +80,13 @@ export default function VotarPage() {
   async function load() {
     try {
       setLoading(true);
-      const [sRes, fRes] = await Promise.all([fetch("/api/sugerencias"), fetch("/api/funciones")]);
-      if (!sRes.ok) throw new Error(await sRes.text());
+      const [vRes, fRes] = await Promise.all([fetch("/api/votaciones/activa"), fetch("/api/funciones")]);
+      if (!vRes.ok) throw new Error(await vRes.text());
       if (!fRes.ok) throw new Error(await fRes.text());
-      const sData = await sRes.json();
+      const vData = await vRes.json();
       const fData = await fRes.json();
-      setSugerencias(sData.sugerencias);
+      setVotacion(vData);
+      setSugerencias(vData.sugerencias || []);
       setFunciones(fData.funciones);
       setError(null);
     } catch (e) {
@@ -89,6 +99,18 @@ export default function VotarPage() {
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    const update = () => {
+      const closeAt = votacion?.cierraAt ? new Date(votacion.cierraAt).getTime() : 0;
+      const next = Math.max(0, closeAt - Date.now());
+      setRemainingMs(next);
+      if (closeAt && next === 0) load();
+    };
+    update();
+    const timer = window.setInterval(update, 1000);
+    return () => window.clearInterval(timer);
+  }, [votacion?.cierraAt]);
 
   async function handleVotar(id: string) {
     const f = votoForm[id] || { nombre: "", contacto: "" };
@@ -128,6 +150,14 @@ export default function VotarPage() {
   const totalVotos = (sugerencias || []).reduce((s, x) => s + (x._count?.votos || 0), 0) || 100;
   const top5 = [...(sugerencias || [])].sort((a, b) => (b._count?.votos || 0) - (a._count?.votos || 0)).slice(0, 5);
   const proximaFuncion = funciones && funciones.length > 0 ? funciones[0] : null;
+  const totalSeconds = Math.floor(remainingMs / 1000);
+  const remainingDays = Math.floor(totalSeconds / 86400);
+  const remainingHours = Math.floor((totalSeconds % 86400) / 3600);
+  const remainingMinutes = Math.floor((totalSeconds % 3600) / 60);
+  const remainingSeconds = totalSeconds % 60;
+  const countdown = remainingDays > 0
+    ? `${remainingDays} día${remainingDays === 1 ? "" : "s"} ${remainingHours} h`
+    : `${remainingHours} h ${remainingMinutes} min ${remainingSeconds.toString().padStart(2, "0")} s`;
 
   if (loading) {
     return (
@@ -169,9 +199,12 @@ export default function VotarPage() {
               <h2 className="flex items-center gap-2 text-sm font-bold tracking-[0.15em]">
                 <span className="text-[#E8B86A]">▦</span> VOTACIÓN ACTIVA
               </h2>
-              <span className="flex items-center gap-1.5 text-xs text-[#E8B86A]">
-                <FaClock /> Cierre de votación: 2 días 14 horas
-              </span>
+              {votacion?.activa && remainingMs > 0 && <span className="flex items-center gap-1.5 text-xs text-[#E8B86A]">
+                <FaClock /> Cierre de votación: {countdown}
+              </span>}
+              {(!votacion?.activa || remainingMs === 0) && <span className="flex items-center gap-1.5 text-xs text-white/50">
+                <FaClock /> Votación cerrada
+              </span>}
             </div>
 
             {(sugerencias || []).map((s) => {
@@ -179,8 +212,11 @@ export default function VotarPage() {
               const pct = totalVotos ? Math.round((votos / totalVotos) * 100) : 0;
               const displayPct = votos === 0 ? 0 : Math.max(5, pct);
               const yaVoto = votadas.includes(s.id);
-              const meta = getMeta(s.titulo);
-              const poster = getPoster(s.titulo);
+              const poster = getPosterUrl(s);
+              const genre = getGenreLabel(s);
+              const year = s.anio ? String(s.anio) : "";
+              const duration = formatDuration(s.duracionMin);
+              const desc = s.sinopsis || s.comentario || "";
               const isVotando = showVotoForm === s.id;
 
               return (
@@ -195,9 +231,9 @@ export default function VotarPage() {
                     <div className="flex flex-1 flex-col">
                       <h3 className="text-sm font-bold tracking-wide text-white">{s.titulo.toUpperCase()}</h3>
                       <p className="mt-1 text-xs text-white/50">
-                        {meta.genre} · {meta.year} · {meta.duration}
+                        {[genre, year, duration].filter(Boolean).join(" · ")}
                       </p>
-                      <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-white/60">{meta.desc || s.comentario || ""}</p>
+                      <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-white/60">{desc}</p>
                       <div className="mt-auto flex items-end justify-between pt-3">
                         <div className="flex-1">
                           <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
@@ -328,10 +364,20 @@ export default function VotarPage() {
         {/* PRÓXIMA FUNCIÓN */}
         <div className="mt-6 flex flex-col items-center justify-between gap-4 rounded-2xl border border-white/10 bg-[#141414] p-4 sm:flex-row sm:p-5">
           <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-dashed border-white/20 text-xl text-white/40">?</div>
+            {proximaFuncion?.pelicula?.titulo ? (
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#E8B86A]/15 text-sm font-bold text-[#E8B86A]">
+                <FaFilm />
+              </div>
+            ) : (
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-dashed border-white/20 text-xl text-white/40">?</div>
+            )}
             <div>
-              <div className="text-xs font-bold tracking-wide text-white">PELÍCULA</div>
-              <div className="text-xs font-bold tracking-wide text-white/60">POR DEFINIR</div>
+              <div className="text-xs font-bold tracking-wide text-white">
+                {proximaFuncion?.pelicula?.titulo ? proximaFuncion.pelicula.titulo.toUpperCase() : "PELÍCULA"}
+              </div>
+              <div className={`text-xs font-bold tracking-wide ${proximaFuncion?.pelicula?.titulo ? "text-[#E8B86A]" : "text-white/60"}`}>
+                {proximaFuncion?.pelicula?.titulo ? "PROGRAMADA" : "POR DEFINIR"}
+              </div>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-6 text-xs">
@@ -358,9 +404,15 @@ export default function VotarPage() {
               <div className="mt-1 font-medium text-white">{proximaFuncion ? `${proximaFuncion.cuposDisponibles} / ${proximaFuncion.cupoTotal}` : "8 / 8"}</div>
             </div>
           </div>
-          <Link href="/" className="inline-flex items-center gap-2 rounded-lg bg-[#E8B86A] px-6 py-3 text-xs font-bold tracking-wide text-black hover:bg-[#D4A574]">
-            RESERVAR CUPO <FaArrowRight className="text-xs" />
-          </Link>
+          {proximaFuncion ? (
+            <Link href="/" className="inline-flex items-center gap-2 rounded-lg bg-[#E8B86A] px-6 py-3 text-xs font-bold tracking-wide text-black hover:bg-[#D4A574]">
+              RESERVAR CUPO <FaArrowRight className="text-xs" />
+            </Link>
+          ) : (
+            <span className="inline-flex cursor-not-allowed items-center gap-2 rounded-lg bg-white/10 px-6 py-3 text-xs font-bold tracking-wide text-white/40">
+              PRÓXIMAMENTE <FaArrowRight className="text-xs" />
+            </span>
+          )}
         </div>
 
         <footer className="mt-8 flex flex-col items-center justify-between gap-4 border-t border-white/5 pt-6 text-xs text-white/40 sm:flex-row">

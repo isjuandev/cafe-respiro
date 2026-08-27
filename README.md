@@ -104,12 +104,13 @@ Variables: `backend/.env` → `DATABASE_URL`, frontend usa `BACKEND_URL` (ver `.
 │   │   ├── votos/               # POST /api/sugerencias/:id/votos (Sprint 2)
 │   │   ├── reservas/            # POST /api/funciones/:id/reservas (FOR UPDATE)
 │   │   ├── admin/               # login + GET/PATCH sugerencias + POST funciones + GET reservas
-│   │   └── notifications/       # NotificationsService stub + NotificationLog
+│   │   ├── notifications/       # NotificationsService stub + NotificationLog
+│   │   └── votaciones/          # rondas, cierre automático y resultado
 │   ├── prisma/
 │   │   ├── schema.prisma        # Pelicula, Sugerencia (estado+tituloNormalizado), Voto, Funcion, Reserva, NotificationLog
-│   │   ├── migrations/          # 20260822071141_init (parcial) + 20260822091123_add_notification_log
-│   │   └── seed.ts              # 3 pelis + 3 funciones + 1 sugerencia
-│   └── Dockerfile               # multi-stage prod, HEALTHCHECK, migrate deploy + dist/src/main.js
+│   │   ├── migrations/          # migraciones Prisma, incluida la de votaciones
+│   │   └── seed.js              # escenario completo reproducible
+│   └── Dockerfile               # multi-stage prod, HEALTHCHECK, migrate deploy + dist/main.js
 └── frontend/
     ├── app/
     │   ├── layout.tsx           # header nav Cartelera | Sugerencias | Admin
@@ -130,6 +131,7 @@ Variables: `backend/.env` → `DATABASE_URL`, frontend usa `BACKEND_URL` (ver `.
 - **Sugerencia** (Sprint 1 con `estado` + anti-carrera): `titulo*`, `tituloNormalizado*` (determinista: NFD lower trim sin puntuación colapso espacios), `comentario?`, `nombreSolicitante*`, `contacto*` (normalizado lower), `estado` (`PENDIENTE|PROGRAMADA|DESCARTADA` default `PENDIENTE`), `peliculaId?`
   - Índice parcial único: `CREATE UNIQUE INDEX ON "Sugerencia"("tituloNormalizado") WHERE estado IN ('PENDIENTE','PROGRAMADA')` — `DESCARTADA` permite re-sugerir. Race garantizado por PG (P2002 → 200 duplicada).
 - **Voto**: `sugerenciaId*`, `nombreVotante*`, `contacto*` — `@@unique([sugerenciaId, contacto])`
+- **Votacion**: ronda con `iniciaAt`, `cierraAt`, estado y ganadora. Las funciones son a las 19:00 y las votaciones cierran a las 18:00 del día configurado.
 - **Funcion**: `peliculaId*`, `fechaHora*` (`DateTime` único: fecha+hora en una sola columna), `cupoTotal*` — `@@unique([peliculaId, fechaHora])`
 - **Reserva**: `funcionId*`, `nombre*`, `contacto*`, `cantidad` (default 1) — `@@unique([funcionId, contacto])`
 
@@ -144,6 +146,10 @@ GET    /api/health
 GET    /api/sugerencias              # solo PENDIENTE, order createdAt desc, incluye _count.votos
 POST   /api/sugerencias              # body { titulo, comentario?, nombre, contacto } → 201 { duplicada:false } o 200 { duplicada:true, sugerencia: existente } + 400 validation
 GET    /api/funciones                # solo fechaHora >= now(), order asc, incluye pelicula + cuposDisponibles/cuposOcupados
+GET    /api/votaciones/activa         # ronda activa + cierraAt + sugerencias rankeadas
+GET    /api/admin/votaciones           # historial y resultado (admin)
+POST   /api/admin/votaciones           # crea ronda { cierraAt, sugerenciaIds } (admin)
+POST   /api/admin/votaciones/cerrar    # cierra ronda activa y calcula ganadora (admin)
 ```
 
 Validación: `CreateSugerenciaDto` con `class-validator` (titulo 2-120, comentario 0-500, nombre 2-60, contacto 2-100) + `ValidationPipe` global + validación cliente en formulario.
@@ -172,12 +178,13 @@ BACKEND_URL=http://backend:3001
 ```
 
 `DATABASE_URL` dentro de compose usa host `postgres` (nombre del servicio). En local sin Docker usar `localhost`.
+La zona horaria operativa es `America/Bogota` (`TZ`), para garantizar las funciones a las 7:00 PM y el cierre a las 6:00 PM.
 
 **Coolify:** configurar las mismas vars en la UI por servicio (no subir `.env`). `BACKEND_URL` se inyecta en el servicio frontend (ej. `http://caferespiro-backend:3001`) y `DATABASE_URL` en backend con el host interno de Postgres. No requiere `NEXT_PUBLIC_API_URL`.
 
 ## Docker (prod)
 
-- `backend/Dockerfile`: `node:20-alpine` multi-stage, `prisma generate` + `nest build`, runner con `HEALTHCHECK` `wget /api/health` y `CMD npx prisma migrate deploy && node dist/src/main.js` (migrate como parte del arranque, idempotente). Nota: runner incluye dev deps para `prisma` CLI (optimizable a `prune --prod` moviendo `prisma` a dependencies).
+- `backend/Dockerfile`: `node:20-alpine` multi-stage, `prisma generate` + `nest build`, runner con `HEALTHCHECK` `wget /api/health` y `CMD npx prisma migrate deploy && node dist/main.js` (migrate como parte del arranque, idempotente). Nota: runner incluye dev deps para `prisma` CLI (optimizable a `prune --prod` moviendo `prisma` a dependencies).
 - `frontend/Dockerfile`: `node:20-alpine` multi-stage, `HEALTHCHECK` `wget /api/health`, `ARG BACKEND_URL` **bakeado en build** (`next.config.mjs` rewrites). Cambiar `BACKEND_URL` en Coolify requiere **Rebuild** (limitación Next, documentada en `COOLIFY.md`).
 - `docker-compose.yml`: `postgres:16-alpine` + `pg_isready`, `backend` `depends_on postgres healthy`, `frontend` `depends_on backend healthy` con `BACKEND_URL=http://backend:3001`. Es referencia local; en Coolify se crean 3 servicios separados.
 

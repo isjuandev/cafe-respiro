@@ -9,6 +9,6 @@ export class CreateFuncionDto {
 
   @IsInt()
   @Min(1)
-  @Max(200)
+  @Max(15)
   cupoTotal!: number;
 }

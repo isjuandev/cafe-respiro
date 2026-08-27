@@ -1,38 +1,31 @@
-import { Controller, Post, Get, Param, Body, UseGuards, NotFoundException, ConflictException } from '@nestjs/common';
+import { Controller, Post, Get, Param, Body, UseGuards, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { AdminGuard } from '../common/guards/admin.guard';
+import { AuthGuard } from '../common/guards/auth.guard';
+import { RequireRole } from '../common/decorators/require-role.decorator';
 import { CreateFuncionDto } from './dto/create-funcion.dto';
-import { PeliculasService } from '../peliculas/peliculas.service';
-import { FuncionesService } from '../funciones/funciones.service';
+import { SugerenciasService } from '../sugerencias/sugerencias.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
-@UseGuards(AdminGuard)
+@UseGuards(AuthGuard)
+@RequireRole('admin')
 @Controller('admin/funciones')
 export class AdminFuncionesController {
+  private logger = new Logger(AdminFuncionesController.name);
   constructor(
     private prisma: PrismaService,
-    private peliculasService: PeliculasService,
-    private funcionesService: FuncionesService,
+    private sugerenciasService: SugerenciasService,
+    private notifications: NotificationsService,
   ) {}
 
-  // Atajo legacy: crear función desde sugerencia PROGRAMADA (reusa normalización y servicio compartido)
+  // LEGACY endpoint: delega a la operación de dominio única SugerenciasService.programar
+  // Mantiene compatibilidad con clientes que POST /admin/funciones {sugerenciaId, fechaHora, cupoTotal}
+  // Ahora es transaccional y atómico (no deja estados intermedios).
   @Post()
   async create(@Body() dto: CreateFuncionDto) {
-    const sugerencia = await this.prisma.sugerencia.findUnique({ where: { id: dto.sugerenciaId } });
-    if (!sugerencia) throw new NotFoundException('Sugerencia no encontrada');
-    if (sugerencia.estado !== 'PROGRAMADA') {
-      throw new ConflictException('Solo se puede crear función desde una sugerencia PROGRAMADA');
-    }
-
-    // Reusa normalización Sprint 1: busca o crea película de forma deduplicada
-    let peliculaId = sugerencia.peliculaId;
-    if (!peliculaId) {
-      const pelicula = await this.peliculasService.findOrCreateFromSugerencia(sugerencia);
-      peliculaId = pelicula.id;
-      await this.prisma.sugerencia.update({ where: { id: sugerencia.id }, data: { peliculaId } });
-    }
-
-    const funcion = await this.funcionesService.crear(peliculaId!, new Date(dto.fechaHora), Number(dto.cupoTotal));
-    return { funcion };
+    const result = await this.sugerenciasService.programar(dto.sugerenciaId, { fechaHora: dto.fechaHora, cupoTotal: dto.cupoTotal }, { manual: false });
+    // Notificación solo después de commit
+    this.notifications.notifySugerenciaProgramada(result.sugerencia).catch((e) => this.logger.warn(`notifySugerenciaProgramada (legacy) falló: ${e}`));
+    return { funcion: result.funcion, pelicula: result.pelicula, sugerencia: result.sugerencia };
   }
 
   @Get(':id/reservas')

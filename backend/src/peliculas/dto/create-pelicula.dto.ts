@@ -20,6 +20,11 @@ export class CreatePeliculaDto {
   anio?: number;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  genero?: string;
+
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)

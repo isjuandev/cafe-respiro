@@ -43,6 +43,7 @@ DATABASE_URL=postgresql://postgres:<PASSWORD>@<INTERNAL_POSTGRES_HOST>:5432/cafe
 PORT=3001
 FRONTEND_URL=https://<tu-dominio-frontend>   # ej. https://cafe-respiro.coolify.example.com
 NODE_ENV=production
+TZ=America/Bogota
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=<clave segura>
 JWT_SECRET=<32+ chars aleatorios, ej. openssl rand -base64 32>
@@ -79,18 +80,19 @@ En Coolify: `/api/health`, Port `3000`. Depende de backend healthy (ya en compos
 
 Como parte del arranque del backend (idempotente):
 ```sh
-npx prisma migrate deploy && node dist/src/main.js
+npx prisma migrate deploy && node dist/main.js
 ```
 Está en `backend/Dockerfile:33`. No requiere paso manual. En el primer deploy, crea las 2 migraciones:
 - `20260822071141_init` (incluye índice parcial único para duplicados)
 - `20260822091123_add_notification_log`
+- `20260823050000_add_votaciones`
 
 Si necesitas re-seed demo tras `down -v`:
 ```sh
 docker compose exec backend npx prisma db seed
 # o local: DATABASE_URL=... pnpm --filter backend exec prisma db seed
 ```
-Crea 3 pelis + 3 funciones futuras + 1 sugerencia. En prod real, el seed es opcional.
+Crea un escenario completo con usuario, películas, menú, rondas, votos, funciones y reservas. En prod real, el seed es opcional.
 
 ## 5. Orden de deploy
 

@@ -5,5 +5,6 @@ import { SugerenciasController } from './sugerencias.controller';
 @Module({
   controllers: [SugerenciasController],
   providers: [SugerenciasService],
+  exports: [SugerenciasService],
 })
 export class SugerenciasModule {}

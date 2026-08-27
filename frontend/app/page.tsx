@@ -9,8 +9,10 @@ type Pelicula = {
   titulo: string;
   director?: string | null;
   anio?: number | null;
+  genero?: string | null;
   duracionMin?: number | null;
   sinopsis?: string | null;
+  posterUrl?: string | null;
 };
 
 type Funcion = {
@@ -40,31 +42,15 @@ function formatShortDate(iso: string) {
 }
 
 function getGenre(p: Pelicula) {
-  // DEUDA TÉCNICA: heurística director->género, un director no determina género.
-  // Se mantiene para MVP sin campo genero en Pelicula; reemplazar cuando se añada genero real.
-  if (p.titulo.toLowerCase().includes("chihiro")) return "Animación";
-  if (p.titulo.toLowerCase().includes("paras")) return "Drama";
-  if (p.titulo.toLowerCase().includes("whiplash")) return "Drama";
-  if (p.titulo.toLowerCase().includes("interstellar")) return "Ciencia ficción";
-  if (p.titulo.toLowerCase().includes("retrato")) return "Drama";
-  return p.director || "Cine";
+  return p.genero || p.director || "Cine";
 }
 
-function getPoster(titulo: string) {
-  const t = titulo.toLowerCase();
-  if (t.includes("whiplash")) return "https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=600&h=400&fit=crop&crop=center";
-  if (t.includes("chihiro")) return "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600&h=400&fit=crop";
-  if (t.includes("interstellar")) return "https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=1200&h=600&fit=crop";
-  if (t.includes("paras")) return "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=600&h=400&fit=crop";
-  if (t.includes("retrato")) return "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=600&h=400&fit=crop";
-  return "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=600&h=400&fit=crop";
+function getPoster(p: Pelicula) {
+  return p.posterUrl || "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=600&h=400&fit=crop";
 }
 
-function getHeroBg(titulo: string) {
-  if (titulo.toLowerCase().includes("interstellar"))
-    return "https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=1600&h=900&fit=crop";
-  if (titulo.toLowerCase().includes("chihiro"))
-    return "https://images.unsplash.com/photo-1518709594023-6eab9bab7b23?w=1600&h=900&fit=crop";
+function getHeroBg(p: Pelicula | null) {
+  if (p?.posterUrl) return p.posterUrl;
   return "https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=1600&h=900&fit=crop";
 }
 
@@ -183,7 +169,7 @@ export default function CarteleraPage() {
   const heroFecha = hero ? formatHeroDate(hero.fechaHora) : "PRÓXIMAMENTE";
   const heroCupos = hero ? `${hero.cuposOcupados} / ${hero.cupoTotal} cupos` : "";
   const heroCuposDisponibles = hero ? hero.cuposDisponibles : 0;
-  const heroBg = hero ? getHeroBg(heroTitulo) : "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1600&h=900&fit=crop";
+  const heroBg = hero ? getHeroBg(hero.pelicula) : "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1600&h=900&fit=crop";
   const heroId = hero?.id || "hero-placeholder";
 
   return (
@@ -336,7 +322,7 @@ export default function CarteleraPage() {
             const lleno = f ? f.cuposDisponibles === 0 : true;
             const fecha = f ? formatShortDate(f.fechaHora) : null;
             const meta = f ? `${getGenre(f.pelicula)} · ${f.pelicula.duracionMin ? `${Math.floor(f.pelicula.duracionMin / 60)}h ${f.pelicula.duracionMin % 60}min` : ""}`.replace(/ · $/, "") : "";
-            const poster = f ? getPoster(titulo) : "";
+            const poster = f ? getPoster(f.pelicula) : "";
             const fid = f?.id || `placeholder-${idx}`;
 
             return (
@@ -485,7 +471,7 @@ export default function CarteleraPage() {
             </div>
             <p className="mt-3 text-sm font-medium text-white">De 3:00 PM a 7:00 PM</p>
             <p className="mt-1 text-sm leading-relaxed text-white/60">Disfruta nuestro menú antes de la función.</p>
-            <Link href="/" className="mt-4 inline-flex w-fit items-center gap-2 rounded-lg border border-[#6B8E6B]/50 px-4 py-2 text-xs font-bold tracking-wide text-[#6B8E6B] hover:bg-[#6B8E6B] hover:text-black">
+            <Link href="/menu" className="mt-4 inline-flex w-fit items-center gap-2 rounded-lg border border-[#6B8E6B]/50 px-4 py-2 text-xs font-bold tracking-wide text-[#6B8E6B] hover:bg-[#6B8E6B] hover:text-black">
               VER MENÚ <FaArrowRight className="text-xs" />
             </Link>
           </div>
