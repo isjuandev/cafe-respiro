@@ -35,7 +35,7 @@ export class FuncionesService {
     if (isNaN(fechaHora.getTime())) throw new BadRequestException('fechaHora inválida');
     fechaHora = fijarHora(fechaHora, HORA_FUNCION);
     if (fechaHora <= new Date()) throw new BadRequestException('fechaHora debe ser futura');
-    if (cupoTotal < 1 || cupoTotal > 15) throw new BadRequestException('cupoTotal debe ser 1-15 (sala única)');
+    if (cupoTotal < 1 || cupoTotal > 16) throw new BadRequestException('cupoTotal debe ser 1-16 (sala única)');
 
     const pelicula = await this.prisma.pelicula.findUnique({ where: { id: peliculaId } });
     if (!pelicula) throw new ConflictException('Película no encontrada');

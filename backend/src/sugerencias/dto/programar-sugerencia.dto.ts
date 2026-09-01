@@ -6,6 +6,6 @@ export class ProgramarSugerenciaDto {
 
   @IsInt()
   @Min(1)
-  @Max(15)
+  @Max(16)
   cupoTotal!: number;
 }

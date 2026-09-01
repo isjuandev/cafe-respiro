@@ -149,16 +149,17 @@ model CategoriaMenu {
 }
 
 model ItemMenu {
-  id          String       @id @default(cuid())
+  id          String        @id @default(cuid())
   categoriaId String
   categoria   CategoriaMenu @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
   nombre      String
-  descripcion String?      @db.Text
+  descripcion String?       @db.Text
   precio      Int
-  disponible  Boolean      @default(true)
-  orden       Int          @default(0)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  imagenUrl   String?       @db.Text
+  disponible  Boolean       @default(true)
+  orden       Int           @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
   @@index([categoriaId, orden])
   @@index([disponible])

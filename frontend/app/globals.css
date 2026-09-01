@@ -4,11 +4,11 @@
 
 @layer base {
   :root {
-    --background: 0 0% 4%;
+    --background: 0 0% 3%;
     --foreground: 0 0% 96%;
-    --card: 0 0% 8%;
+    --card: 0 0% 7%;
     --card-foreground: 0 0% 96%;
-    --popover: 0 0% 8%;
+    --popover: 0 0% 7%;
     --popover-foreground: 0 0% 96%;
     --primary: 38 60% 67%;
     --primary-foreground: 0 0% 8%;
@@ -27,11 +27,11 @@
   }
 
   .dark {
-    --background: 0 0% 4%;
+    --background: 0 0% 3%;
     --foreground: 0 0% 96%;
-    --card: 0 0% 8%;
+    --card: 0 0% 7%;
     --card-foreground: 0 0% 96%;
-    --popover: 0 0% 8%;
+    --popover: 0 0% 7%;
     --popover-foreground: 0 0% 96%;
     --primary: 38 60% 67%;
     --primary-foreground: 0 0% 8%;
@@ -54,9 +54,10 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground antialiased;
-    background: #050507;
+    @apply bg-background text-foreground antialiased selection:bg-[#E8B86A] selection:text-black;
+    background: #070709;
     font-feature-settings: "rlig" 1, "calt" 1;
+    overflow-x: hidden;
   }
 
   button,
@@ -71,7 +72,7 @@
   }
 }
 
-/* Café Respiro custom */
+/* Café Respiro Custom Utilities & Atmosphere */
 @layer utilities {
   .text-gold {
     color: #E8B86A;
@@ -83,19 +84,36 @@
     border-color: #E8B86A;
   }
   .bg-cine {
-    background: linear-gradient(180deg, #0a0a0f 0%, #050507 100%);
+    background: linear-gradient(180deg, #0d0d12 0%, #070709 100%);
+  }
+
+  .glow-gold {
+    box-shadow: 0 0 40px -10px rgba(232, 184, 106, 0.25);
+  }
+
+  .glow-gold-sm {
+    box-shadow: 0 0 20px -5px rgba(232, 184, 106, 0.2);
   }
 
   .surface-card {
-    border: 1px solid #FFFFFF1A;
-    border-radius: 0.75rem;
-    background-color: #141414;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1rem;
+    background-color: #121215;
+  }
+
+  .surface-card-hover {
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .surface-card-hover:hover {
+    border-color: rgba(232, 184, 106, 0.35);
+    box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.7), 0 0 24px -6px rgba(232, 184, 106, 0.15);
+    transform: translateY(-2px);
   }
 
   .control-dark {
-    border: 1px solid #FFFFFF1A;
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 0.75rem;
-    background-color: #0A0A0A;
-    color: #F5F5F5;
+    background-color: #0d0d10;
+    color: #f5f5f5;
   }
 }

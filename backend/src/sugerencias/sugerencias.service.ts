@@ -94,8 +94,8 @@ export class SugerenciasService {
     if (isNaN(fechaHora.getTime())) throw new BadRequestException('fechaHora inválida');
     fechaHora = fijarHora(fechaHora, HORA_FUNCION);
     if (fechaHora <= new Date()) throw new BadRequestException('fechaHora debe ser futura');
-    if (!Number.isInteger(dto.cupoTotal) || dto.cupoTotal < 1 || dto.cupoTotal > 15) {
-      throw new BadRequestException('cupoTotal debe ser entero 1-15');
+    if (!Number.isInteger(dto.cupoTotal) || dto.cupoTotal < 1 || dto.cupoTotal > 16) {
+      throw new BadRequestException('cupoTotal debe ser entero 1-16');
     }
 
     // Transacción atómica: Pelicula + Funcion + Sugerencia

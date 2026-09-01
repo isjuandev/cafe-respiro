@@ -24,7 +24,7 @@ export default function AdminLoginPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Credenciales inválidas");
-      router.push(data.role === "cliente" ? "/dashboard" : "/admin");
+      window.location.href = data.role === "cliente" ? "/dashboard" : "/admin";
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error");
     } finally {

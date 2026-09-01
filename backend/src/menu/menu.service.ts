@@ -18,7 +18,7 @@ export class MenuService {
         items: {
           where: { disponible: true },
           orderBy: [{ orden: 'asc' }, { nombre: 'asc' }],
-          select: { id: true, nombre: true, descripcion: true, precio: true, orden: true },
+          select: { id: true, nombre: true, descripcion: true, precio: true, imagenUrl: true, orden: true },
         },
       },
     });
@@ -50,13 +50,34 @@ export class MenuService {
 
   async createItem(dto: CreateItemMenuDto) {
     await this.requireCategoria(dto.categoriaId);
-    return this.prisma.itemMenu.create({ data: { categoriaId: dto.categoriaId, nombre: dto.nombre.trim(), descripcion: dto.descripcion?.trim() || null, precio: dto.precio, disponible: dto.disponible ?? true, orden: dto.orden ?? 0 } });
+    return this.prisma.itemMenu.create({
+      data: {
+        categoriaId: dto.categoriaId,
+        nombre: dto.nombre.trim(),
+        descripcion: dto.descripcion?.trim() || null,
+        precio: dto.precio,
+        imagenUrl: dto.imagenUrl?.trim() || null,
+        disponible: dto.disponible ?? true,
+        orden: dto.orden ?? 0,
+      },
+    });
   }
 
   async updateItem(id: string, dto: UpdateItemMenuDto) {
     await this.requireItem(id);
     if (dto.categoriaId) await this.requireCategoria(dto.categoriaId);
-    return this.prisma.itemMenu.update({ where: { id }, data: { ...(dto.categoriaId !== undefined && { categoriaId: dto.categoriaId }), ...(dto.nombre !== undefined && { nombre: dto.nombre.trim() }), ...(dto.descripcion !== undefined && { descripcion: dto.descripcion?.trim() || null }), ...(dto.precio !== undefined && { precio: dto.precio }), ...(dto.disponible !== undefined && { disponible: dto.disponible }), ...(dto.orden !== undefined && { orden: dto.orden }) } });
+    return this.prisma.itemMenu.update({
+      where: { id },
+      data: {
+        ...(dto.categoriaId !== undefined && { categoriaId: dto.categoriaId }),
+        ...(dto.nombre !== undefined && { nombre: dto.nombre.trim() }),
+        ...(dto.descripcion !== undefined && { descripcion: dto.descripcion?.trim() || null }),
+        ...(dto.precio !== undefined && { precio: dto.precio }),
+        ...(dto.imagenUrl !== undefined && { imagenUrl: dto.imagenUrl?.trim() || null }),
+        ...(dto.disponible !== undefined && { disponible: dto.disponible }),
+        ...(dto.orden !== undefined && { orden: dto.orden }),
+      },
+    });
   }
 
   async toggleItem(id: string) {

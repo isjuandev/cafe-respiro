@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  ForbiddenException,
+  Logger,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateReservaDto } from './dto/create-reserva.dto';
 import { normalizeContacto } from '../common/utils/normalize';
@@ -8,14 +14,20 @@ import { NotificationsService } from '../notifications/notifications.service';
 @Injectable()
 export class ReservasService {
   private logger = new Logger(ReservasService.name);
+
   constructor(
     private prisma: PrismaService,
-    private notifications: NotificationsService,
+    private notifications: NotificationsService
   ) {}
 
-  async reservar(funcionId: string, dto: CreateReservaDto) {
-    const contactoNormalizado = normalizeContacto(dto.contacto);
+  async reservar(
+    funcionId: string,
+    dto: CreateReservaDto,
+    authUser: { contacto: string; nombre?: string }
+  ) {
+    const contactoNormalizado = normalizeContacto(authUser.contacto);
     const cantidad = dto.cantidad;
+    const nombre = dto.nombre?.trim() || authUser.nombre?.trim() || 'Cliente';
 
     const result = await this.prisma.$transaction(async (tx) => {
       // Lock pesimista de la fila Funcion — Read Committed es suficiente.
@@ -51,7 +63,7 @@ export class ReservasService {
         const reserva = await tx.reserva.create({
           data: {
             funcionId,
-            nombre: dto.nombre.trim(),
+            nombre,
             contacto: contactoNormalizado,
             cantidad,
           },
@@ -63,13 +75,13 @@ export class ReservasService {
         };
       } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-          throw new ConflictException('Ya tienes una reserva para esta función con ese contacto');
+          throw new ConflictException('Ya tienes una reserva activa para esta función');
         }
         throw error;
       }
     });
 
-    // Notify post-commit con cliente global (nunca con tx), no bloquea respuesta
+    // Notificación post-commit segura
     const funcion = await this.prisma.funcion.findUnique({
       where: { id: funcionId },
       include: { pelicula: true },
@@ -79,5 +91,55 @@ export class ReservasService {
       .catch((e) => this.logger.warn(`notifyReservaConfirmada falló: ${e}`));
 
     return result;
+  }
+
+  async cancelar(reservaId: string, authUser: { contacto: string; role?: string }) {
+    const reserva = await this.prisma.reserva.findUnique({
+      where: { id: reservaId },
+      include: { funcion: { include: { pelicula: true } } },
+    });
+
+    if (!reserva) {
+      throw new NotFoundException('Reserva no encontrada');
+    }
+
+    if (
+      authUser.role !== 'admin' &&
+      normalizeContacto(reserva.contacto) !== normalizeContacto(authUser.contacto)
+    ) {
+      throw new ForbiddenException('No tienes permiso para cancelar esta reserva');
+    }
+
+    if (new Date(reserva.funcion.fechaHora) <= new Date()) {
+      throw new ConflictException('No se puede cancelar la reserva de una función pasada');
+    }
+
+    await this.prisma.reserva.delete({
+      where: { id: reservaId },
+    });
+
+    try {
+      await this.prisma.notificationLog.create({
+        data: {
+          tipo: 'RESERVA_CANCELADA',
+          destinatario: reserva.contacto,
+          payload: {
+            reservaId: reserva.id,
+            funcionId: reserva.funcionId,
+            pelicula: reserva.funcion.pelicula?.titulo,
+            cantidad: reserva.cantidad,
+          } as any,
+        },
+      });
+    } catch (e) {
+      this.logger.warn(`NotificationLog cancelada falló: ${e}`);
+    }
+
+    return {
+      ok: true,
+      message: 'Reserva cancelada exitosamente',
+      funcionId: reserva.funcionId,
+      cuposLiberados: reserva.cantidad,
+    };
   }
 }

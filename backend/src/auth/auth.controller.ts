@@ -23,6 +23,19 @@ export class AuthController {
     return { ...(result.usuario ? { usuario: result.usuario } : {}), role: result.role };
   }
 
+  @Post('auth/logout')
+  async logout(@Res({ passthrough: true }) res: Response) {
+    res.clearCookie('admin_token', { path: '/' });
+    return { ok: true };
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('auth/me')
+  async me(@Req() req: Request) {
+    const user = (req as any).user;
+    return { authenticated: true, user };
+  }
+
   @UseGuards(AuthGuard)
   @RequireRole('cliente')
   @Get('mis-reservas')
@@ -32,6 +45,12 @@ export class AuthController {
   }
 
   private setCookie(res: Response, token: string) {
-    res.cookie('admin_token', token, { httpOnly: true, secure: (process.env.FRONTEND_URL || '').startsWith('https://'), sameSite: 'lax', maxAge: 8 * 60 * 60 * 1000, path: '/' });
+    res.cookie('admin_token', token, {
+      httpOnly: true,
+      secure: (process.env.FRONTEND_URL || '').startsWith('https://'),
+      sameSite: 'lax',
+      maxAge: 8 * 60 * 60 * 1000,
+      path: '/',
+    });
   }
 }

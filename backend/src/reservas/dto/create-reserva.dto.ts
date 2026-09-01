@@ -1,16 +1,17 @@
-import { IsString, IsInt, Min, Max, MaxLength, MinLength } from 'class-validator';
+import { IsInt, Min, Max, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateReservaDto {
+  @IsOptional()
   @IsString()
   @MinLength(2, { message: 'El nombre debe tener al menos 2 caracteres' })
   @MaxLength(60, { message: 'El nombre no puede exceder 60 caracteres' })
-  nombre!: string;
+  nombre?: string;
 
+  @IsOptional()
   @IsString()
-  @MinLength(2, { message: 'El contacto es obligatorio' })
   @MaxLength(100, { message: 'El contacto no puede exceder 100 caracteres' })
-  contacto!: string;
+  contacto?: string;
 
   @Type(() => Number)
   @IsInt({ message: 'La cantidad debe ser un número entero' })

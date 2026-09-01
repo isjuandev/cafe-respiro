@@ -19,6 +19,10 @@ export class CreateItemMenuDto {
   precio!: number;
 
   @IsOptional()
+  @IsString()
+  imagenUrl?: string;
+
+  @IsOptional()
   @IsBoolean()
   disponible?: boolean;
 
@@ -45,6 +49,10 @@ export class UpdateItemMenuDto {
   @IsInt()
   @Min(0)
   precio?: number;
+
+  @IsOptional()
+  @IsString()
+  imagenUrl?: string;
 
   @IsOptional()
   @IsString()
