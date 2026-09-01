@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // standalone: output minimal para Docker (reduce imagen de ~600MB a ~150MB)
+  // Coolify copia solo .next/standalone + .next/static + public
+  output: "standalone",
   async rewrites() {
     // Proxy /api/* hacia el backend NestJS.
     // En docker-compose el backend es http://backend:3001,

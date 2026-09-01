@@ -1,41 +1,70 @@
+# Cafe Respiro — Compose optimizado para local y Coolify (Docker Compose deployment)
+# Uso local:  docker compose up --build
+# Uso Coolify:
+#   Opción A (recomendada para Coolify): Deploy como "Docker Compose" apuntando a este archivo.
+#            Coolify inyecta envs y genera dominios; este archivo ya es compatible (sin container_name).
+#   Opción B (3 apps separadas): No uses este compose en Coolify. Crea 3 recursos:
+#            - Postgres: Database → PostgreSQL 16 (imagen oficial)
+#            - Backend:  Application → Dockerfile `backend/Dockerfile`, port 3001
+#            - Frontend: Application → Dockerfile `frontend/Dockerfile`, port 3000, build arg BACKEND_URL
+# Ver COOLIFY.md para variables requeridas.
+
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: cafe-respiro-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-caferespiro}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-caferespiro}"]
+      # $$ para que la interpolación ocurra dentro del contenedor, no en el host (importante en Coolify)
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-caferespiro}"]
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 10s
+    # Puerto solo para local. En Coolify con DB dedicada este mapping lo gestiona Coolify (no exponer públicamente).
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
 
   backend:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    container_name: cafe-respiro-backend
+      # Cache de BuildKit (Coolify con BuildKit activado lo aprovecha)
+      # args: no necesita, pero si añades build-time vars aquí
+    image: cafe-respiro-backend:latest
     restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-caferespiro}?schema=public
-      PORT: 3001
-      FRONTEND_URL: http://localhost:3000
-      NODE_ENV: production
-      TZ: America/Bogota
+      # Para docker-compose local usa host `postgres` (servicio). Para Coolify Compose con DB externa, define POSTGRES_HOST al host interno de Coolify.
+      # Ej Coolify: POSTGRES_HOST=postgres-xxxxx  -> DATABASE_URL=postgresql://postgres:PASSWORD@postgres-xxxxx:5432/caferespiro?schema=public
+      # Nota: .env local tiene DATABASE_URL=localhost para prisma fuera de Docker; este compose ignora ese valor y usa POSTGRES_HOST para evitar conflicto.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-caferespiro}?schema=public
+      PORT: ${PORT:-3001}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      NODE_ENV: ${NODE_ENV:-production}
+      TZ: ${TZ:-America/Bogota}
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
       JWT_SECRET: ${JWT_SECRET:-cambia-este-secreto-en-produccion-min-32-chars}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+      # Opcionales (passthrough si están definidas)
+      VOTE_RATE_IP_BURST_WINDOW_MS: ${VOTE_RATE_IP_BURST_WINDOW_MS:-}
+      VOTE_RATE_IP_BURST_MAX: ${VOTE_RATE_IP_BURST_MAX:-}
+      VOTE_RATE_IP_WINDOW_MS: ${VOTE_RATE_IP_WINDOW_MS:-}
+      VOTE_RATE_IP_MAX: ${VOTE_RATE_IP_MAX:-}
+      CAPTCHA_ENABLED: ${CAPTCHA_ENABLED:-false}
+      CAPTCHA_SECRET_KEY: ${CAPTCHA_SECRET_KEY:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      NOTIFICATION_WEBHOOK_URL: ${NOTIFICATION_WEBHOOK_URL:-}
+      TMDB_API_KEY: ${TMDB_API_KEY:-}
     ports:
       - "${BACKEND_PORT:-3001}:3001"
     healthcheck:
@@ -43,21 +72,37 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+      start_period: 30s
 
   frontend:
     build:
       context: .
       dockerfile: frontend/Dockerfile
-    container_name: cafe-respiro-frontend
+      args:
+        # Se bakea en `next build` (rewrites). Cambiarlo requiere rebuild.
+        # En Coolify: Frontend → Build Args → BACKEND_URL=http://<internal-backend-host>:3001
+        # Para compose local: http://backend:3001 funciona dentro de la network Docker
+        BACKEND_URL: ${BACKEND_URL:-http://backend:3001}
+    image: cafe-respiro-frontend:latest
     restart: unless-stopped
     depends_on:
       backend:
         condition: service_healthy
     environment:
-      BACKEND_URL: http://backend:3001
-      PORT: 3000
+      # Runtime: para server-side fetches directos (si algún route usa fetch directo)
+      BACKEND_URL: ${BACKEND_URL:-http://backend:3001}
+      PORT: ${FRONTEND_PORT:-3000}
+      HOSTNAME: "0.0.0.0"
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
 volumes:
   postgres_data:
+    # En Coolify Compose, driver local es suficiente
+    driver: local
