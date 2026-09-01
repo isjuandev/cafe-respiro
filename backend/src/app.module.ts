@@ -10,6 +10,8 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { MenuModule } from './menu/menu.module';
 import { AuthModule } from './auth/auth.module';
 import { VotacionesModule } from './votaciones/votaciones.module';
+import { TiposEntradaModule } from './tipos-entrada/tipos-entrada.module';
+import { ConfiguracionPagoModule } from './configuracion-pago/configuracion-pago.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -25,6 +27,8 @@ import { AppController } from './app.controller';
     FuncionesModule,
     ReservasModule,
     AdminModule,
+    TiposEntradaModule,
+    ConfiguracionPagoModule,
   ],
   controllers: [AppController],
 })

@@ -97,15 +97,62 @@ model Voto {
   @@index([sugerenciaId])
 }
 
+enum ReservaEstado {
+  PENDIENTE_PAGO
+  CONFIRMADA
+  CANCELADA
+}
+
+model TipoEntrada {
+  id          String        @id @default(cuid())
+  nombre      String        // Ej: "Esencial", "Preferencial", "Especial"
+  precio      Int           // En COP (ej: 15000, 30000, 45000)
+  descripcion String?       @db.Text
+  orden       Int           @default(0)
+  activo      Boolean       @default(true)
+  items       ReservaItem[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([activo, orden])
+}
+
+model ReservaItem {
+  id             String      @id @default(cuid())
+  reservaId      String
+  reserva        Reserva     @relation(fields: [reservaId], references: [id], onDelete: Cascade)
+  tipoEntradaId  String
+  tipoEntrada    TipoEntrada @relation(fields: [tipoEntradaId], references: [id], onDelete: Restrict)
+  cantidad       Int
+  precioUnitario Int         // Snapshot del precio
+  subtotal       Int         // cantidad * precioUnitario
+
+  @@index([reservaId])
+  @@index([tipoEntradaId])
+}
+
+model ConfiguracionPago {
+  id            String   @id @default("default")
+  banco         String   @default("Bancolombia")
+  tipoCuenta    String   @default("Ahorros")
+  numeroCuenta  String   @default("123-456789-01")
+  titular       String   @default("Café Respiro S.A.S.")
+  documento     String?  @default("NIT 901.234.567-8")
+  qrImageUrl    String?  @default("/images/pago-qr.png")
+  telefonoWp    String   @default("573001234567")
+  instrucciones String?  @db.Text
+  updatedAt     DateTime @updatedAt
+}
+
 model Funcion {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   peliculaId String
-  pelicula   Pelicula @relation(fields: [peliculaId], references: [id], onDelete: Cascade)
+  pelicula   Pelicula  @relation(fields: [peliculaId], references: [id], onDelete: Cascade)
   fechaHora  DateTime
   cupoTotal  Int
   reservas   Reserva[]
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   // Sala única: solo 1 función por fecha/hora (19:00 fijo => 1 por día). Migrado desde @@unique([peliculaId, fechaHora]).
   @@unique([fechaHora])
@@ -114,21 +161,36 @@ model Funcion {
 }
 
 model Reserva {
-  id        String   @id @default(cuid())
-  funcionId String
-  funcion   Funcion  @relation(fields: [funcionId], references: [id], onDelete: Cascade)
-  nombre    String
-  contacto  String
-  cantidad  Int      @default(1)
-  createdAt DateTime @default(now())
+  id                   String        @id @default(cuid())
+  codigo               String        @unique // Ej: "CIN-TN56W"
+  funcionId            String
+  funcion              Funcion       @relation(fields: [funcionId], references: [id], onDelete: Cascade)
+  usuarioId            String?
+  usuario              Usuario?      @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  nombre               String
+  contacto             String        // WhatsApp normalizado
+  email                String?
+  cantidad             Int           @default(1) // Suma total de cupos
+  total                Int           @default(0) // Total a pagar en COP
+  items                ReservaItem[]
+  estado               ReservaEstado @default(PENDIENTE_PAGO)
+  expiraEn             DateTime      // Límite de tiempo para pago
+  confirmadoPorAdminId String?
+  confirmadoEn         DateTime?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
 
-  @@unique([funcionId, contacto])
   @@index([funcionId])
+  @@index([usuarioId])
+  @@index([codigo])
+  @@index([estado])
+  @@index([expiraEn])
+  @@index([contacto])
 }
 
 model NotificationLog {
   id          String   @id @default(cuid())
-  tipo        String // SUGERENCIA_PROGRAMADA | RESERVA_CONFIRMADA
+  tipo        String // SUGERENCIA_PROGRAMADA | RESERVA_CONFIRMADA | RESERVA_REGISTRADA | PAGO_CONFIRMADO
   destinatario String? // contacto si aplica
   payload     Json
   createdAt   DateTime @default(now())
@@ -166,9 +228,10 @@ model ItemMenu {
 }
 
 model Usuario {
-  id           String   @id @default(cuid())
-  contacto     String   @unique
+  id           String    @id @default(cuid())
+  contacto     String    @unique
   nombre       String
   passwordHash String
-  createdAt    DateTime @default(now())
+  reservas     Reserva[]
+  createdAt    DateTime  @default(now())
 }

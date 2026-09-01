@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { FaLightbulb, FaThumbsUp } from "react-icons/fa";
 
 interface Suggestion {
   id: string;
@@ -59,21 +60,21 @@ export default function AdminSuggestionsPage() {
   function getBadgeClass(estado: string) {
     switch (estado) {
       case "GANADORA":
-        return "bg-[#E8B86A]/20 text-[#E8B86A] border border-[#E8B86A]/30";
+        return "bg-[#E8B86A]/10 text-[#E8B86A] border border-[#E8B86A]/25";
       case "PROGRAMADA":
-        return "bg-green-500/20 text-green-300 border border-green-500/30";
+        return "bg-green-500/10 text-green-400 border border-green-500/25";
       case "DESCARTADA":
-        return "bg-red-500/20 text-red-300 border border-red-500/30";
+        return "bg-red-500/10 text-red-400 border border-red-500/25";
       default:
-        return "bg-white/10 text-white/70 border border-white/10";
+        return "bg-white/5 text-white/70 border border-white/10";
     }
   }
 
   if (items === null && !error) {
     return (
       <div className="space-y-4">
-        <div className="h-8 w-48 animate-pulse rounded bg-white/5" />
-        <div className="h-64 animate-pulse rounded-xl bg-white/5" />
+        <div className="h-8 w-48 animate-pulse rounded-2xl bg-white/5" />
+        <div className="h-64 animate-pulse rounded-3xl bg-white/5" />
       </div>
     );
   }
@@ -81,21 +82,21 @@ export default function AdminSuggestionsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-white">Sugerencias</h2>
-        <p className="mt-1 text-sm text-white/60">
-          Revisa las películas propuestas por la comunidad y define su estado.
+        <h2 className="text-2xl font-black text-white font-serif">Sugerencias de la Comunidad</h2>
+        <p className="mt-1 text-xs text-white/60">
+          Revisa las películas propuestas por los espectadores y modera su estado para las rondas de votación.
         </p>
       </div>
 
       {error && (
         <div
           role="alert"
-          className="flex items-center justify-between rounded-lg bg-red-500/10 px-4 py-3 text-sm text-red-300 border border-red-500/20"
+          className="flex items-center justify-between rounded-2xl bg-red-500/10 px-4 py-3 text-xs text-red-300 border border-red-500/20"
         >
           <span>{error}</span>
           <button
             onClick={loadSuggestions}
-            className="ml-3 rounded underline text-xs font-bold hover:text-white"
+            className="ml-3 underline font-bold hover:text-white"
           >
             Reintentar
           </button>
@@ -103,8 +104,8 @@ export default function AdminSuggestionsPage() {
       )}
 
       {items?.length === 0 && (
-        <div className="surface-card p-8 text-center text-sm text-white/60">
-          Aún no hay sugerencias registradas.
+        <div className="rounded-3xl border border-white/10 bg-[#111114] p-8 text-center text-xs text-white/40 italic">
+          Aún no hay sugerencias registradas por la comunidad.
         </div>
       )}
 
@@ -112,13 +113,13 @@ export default function AdminSuggestionsPage() {
         {items?.map((item) => (
           <article
             key={item.id}
-            className="surface-card flex flex-wrap items-center justify-between gap-4 p-4 transition-colors hover:border-white/20"
+            className="rounded-2xl border border-white/10 bg-[#111114] flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5 transition-colors hover:border-white/20"
           >
             <div className="min-w-0 flex-1">
-              <h3 className="truncate text-base font-medium text-white">{item.titulo}</h3>
+              <h3 className="truncate text-base font-bold text-white font-serif">{item.titulo}</h3>
               <p className="mt-1 text-xs text-white/50">
-                Por <span className="text-white/80">{item.nombreSolicitante}</span> ·{" "}
-                <span className="text-[#E8B86A] font-medium">{item._count?.votos || 0} votos</span> ·{" "}
+                Propuesta por <span className="text-white/80 font-medium">{item.nombreSolicitante}</span> ·{" "}
+                <span className="text-[#E8B86A] font-mono font-bold">{item._count?.votos || 0} votos</span> ·{" "}
                 {new Date(item.createdAt).toLocaleDateString("es-CO", {
                   dateStyle: "medium",
                 })}
@@ -126,7 +127,7 @@ export default function AdminSuggestionsPage() {
             </div>
 
             <div className="flex items-center gap-3">
-              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getBadgeClass(item.estado)}`}>
+              <span className={`rounded-full px-3 py-1 text-[10px] font-bold ${getBadgeClass(item.estado)}`}>
                 {item.estado}
               </span>
 
@@ -135,7 +136,7 @@ export default function AdminSuggestionsPage() {
                 value={item.estado}
                 disabled={updatingId === item.id}
                 onChange={(e) => updateEstado(item.id, e.target.value)}
-                className="control-dark rounded-lg px-3 py-2 text-xs font-medium focus:border-[#E8B86A]/50 focus:outline-none"
+                className="rounded-xl border border-white/10 bg-[#16161A] px-3 py-2 text-xs font-medium text-white focus:border-[#E8B86A] focus:outline-none transition-colors"
               >
                 <option value="PENDIENTE">PENDIENTE</option>
                 <option value="GANADORA" disabled>

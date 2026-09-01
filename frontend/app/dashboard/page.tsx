@@ -12,6 +12,8 @@ import {
   FaTrashAlt,
   FaExclamationTriangle,
   FaCheckCircle,
+  FaTicketAlt,
+  FaQrcode,
 } from "react-icons/fa";
 
 interface Movie {
@@ -21,16 +23,29 @@ interface Movie {
 }
 
 interface ShowFunction {
+  id: string;
   fechaHora: string;
   cupoTotal: number;
   pelicula: Movie;
 }
 
+interface ItemBooking {
+  tipoEntrada: { nombre: string } | string;
+  cantidad: number;
+  precioUnitario: number;
+  subtotal: number;
+}
+
 interface Reserva {
   id: string;
+  codigo?: string;
   cantidad: number;
+  total?: number;
+  estado?: string;
+  estadoEfectivo?: "PENDIENTE_PAGO" | "CONFIRMADA" | "CANCELADA" | "VENCIDA";
   createdAt: string;
   funcion: ShowFunction;
+  items?: ItemBooking[];
 }
 
 interface UserProfile {
@@ -93,13 +108,21 @@ export default function DashboardPage() {
   async function handleLogout() {
     try {
       setLoggingOut(true);
+      if (typeof window !== "undefined") {
+        sessionStorage.clear();
+        localStorage.clear();
+      }
       await fetch("/api/auth/logout", {
         method: "POST",
         credentials: "include",
       });
-      window.location.href = "/login";
+      window.location.href = "/";
     } catch {
-      window.location.href = "/login";
+      if (typeof window !== "undefined") {
+        sessionStorage.clear();
+        localStorage.clear();
+      }
+      window.location.href = "/";
     }
   }
 
@@ -119,7 +142,9 @@ export default function DashboardPage() {
         throw new Error(data.message || "Error al cancelar la reserva");
       }
 
-      setFeedback(`Reserva para "${cancelingReserva.funcion.pelicula.titulo}" cancelada con éxito. Se liberaron los cupos.`);
+      setFeedback(
+        `Reserva para "${cancelingReserva.funcion.pelicula.titulo}" cancelada con éxito.`
+      );
       setCancelingReserva(null);
       await loadData();
     } catch (e) {
@@ -131,15 +156,15 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="bg-[#050507] min-h-[calc(100vh-64px)] px-4 py-12 text-white sm:px-6 lg:px-8">
+    <div className="bg-[#070709] min-h-[calc(100vh-64px)] px-4 py-12 text-white sm:px-6 lg:px-8">
       {/* Modal de Confirmación de Cancelación */}
       {cancelingReserva && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
-            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/85"
             onClick={() => !cancelLoading && setCancelingReserva(null)}
           />
-          <div className="relative w-full max-w-md rounded-2xl border border-red-500/30 bg-[#141414] p-6 text-center shadow-2xl">
+          <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-[#111114] p-6 text-center">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-red-500/20 bg-red-500/10 text-red-400">
               <FaExclamationTriangle className="text-2xl" />
             </div>
@@ -147,10 +172,11 @@ export default function DashboardPage() {
             <h3 className="mt-4 text-xl font-bold text-white">¿Cancelar esta reserva?</h3>
             <p className="mt-2 text-sm text-white/60 leading-relaxed">
               Estás a punto de cancelar tu reserva de{" "}
-              <strong className="text-white">{cancelingReserva.cantidad} {cancelingReserva.cantidad === 1 ? "cupo" : "cupos"}</strong>{" "}
+              <strong className="text-white">
+                {cancelingReserva.cantidad} {cancelingReserva.cantidad === 1 ? "cupo" : "cupos"}
+              </strong>{" "}
               para la función de{" "}
               <strong className="text-[#E8B86A]">{cancelingReserva.funcion.pelicula.titulo}</strong>.
-              Tus lugares se liberarán inmediatamente en la cartelera.
             </p>
 
             <div className="mt-6 flex gap-3">
@@ -168,20 +194,20 @@ export default function DashboardPage() {
                 onClick={handleConfirmCancel}
                 className="flex-1 rounded-xl bg-red-600 py-3 text-xs font-bold text-white hover:bg-red-500 transition-colors disabled:opacity-50"
               >
-                {cancelLoading ? "Cancelando..." : "Sí, cancelar reserva"}
+                {cancelLoading ? "Cancelando..." : "Sí, cancelar"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      <main className="mx-auto max-w-[900px]">
-        {/* Header con bienvenida y botón de Cerrar Sesión */}
+      <main className="mx-auto max-w-[960px]">
+        {/* Header con bienvenida */}
         <div className="mb-8 flex flex-wrap items-start justify-between gap-4 border-b border-white/5 pb-6">
           <div>
             <p className="text-xs font-bold tracking-[0.2em] text-[#E8B86A]">MI EXPERIENCIA</p>
             <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">
-              {user?.contacto ? `Hola, ${user.contacto.split("@")[0]}` : "Mis Reservas"}
+              Hola, {user?.nombre || user?.contacto?.split("@")[0] || "Cinéfilo"}
             </h1>
             <p className="mt-1 text-sm text-white/60">
               {user?.contacto
@@ -238,7 +264,7 @@ export default function DashboardPage() {
         )}
 
         {!loading && reservas && reservas.length === 0 && (
-          <div className="surface-card p-12 text-center">
+          <div className="surface-card p-12 text-center rounded-3xl">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white/5 text-[#E8B86A]">
               <FaCalendarAlt className="text-2xl" />
             </div>
@@ -256,73 +282,138 @@ export default function DashboardPage() {
         )}
 
         {!loading && reservas && reservas.length > 0 && (
-          <div className="space-y-4">
+          <div className="space-y-5">
             {reservas.map((reserva) => {
               const date = new Date(reserva.funcion.fechaHora);
+              const isConfirmada = reserva.estadoEfectivo === "CONFIRMADA";
+              const isPendiente = reserva.estadoEfectivo === "PENDIENTE_PAGO";
+              const isVencida = reserva.estadoEfectivo === "VENCIDA";
+              const isCancelada = reserva.estadoEfectivo === "CANCELADA";
+
               return (
                 <article
                   key={reserva.id}
-                  className="surface-card overflow-hidden p-6 transition-colors hover:border-white/20"
+                  className="surface-card overflow-hidden p-6 rounded-3xl transition-colors hover:border-white/20 space-y-4"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/5 pb-4">
                     <div>
-                      <span className="inline-flex items-center gap-1.5 text-xs font-bold tracking-widest text-[#E8B86A]">
-                        ● RESERVA CONFIRMADA
-                      </span>
-                      <h2 className="mt-1 text-2xl font-bold text-white">
+                      <div className="flex items-center gap-2.5">
+                        {isConfirmada && (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-green-500/15 border border-green-500/30 px-3 py-0.5 text-xs font-bold text-green-400">
+                            <FaCheckCircle className="text-[10px]" /> PAGO CONFIRMADO
+                          </span>
+                        )}
+                        {isPendiente && (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#E8B86A]/15 border border-[#E8B86A]/30 px-3 py-0.5 text-xs font-bold text-[#E8B86A] animate-pulse">
+                            <FaClock className="text-[10px]" /> PENDIENTE DE PAGO
+                          </span>
+                        )}
+                        {isVencida && (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/15 border border-red-500/30 px-3 py-0.5 text-xs font-bold text-red-400">
+                            VENCIDA
+                          </span>
+                        )}
+                        {isCancelada && (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/5 border border-white/10 px-3 py-0.5 text-xs font-bold text-white/40">
+                            CANCELADA
+                          </span>
+                        )}
+
+                        {reserva.codigo && (
+                          <span className="font-mono text-xs font-bold text-[#E8B86A]">
+                            #{reserva.codigo}
+                          </span>
+                        )}
+                      </div>
+
+                      <h2 className="mt-2 text-2xl font-black text-white font-serif">
                         {reserva.funcion.pelicula.titulo}
                       </h2>
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <span className="flex items-center gap-1.5 rounded-full bg-[#6B8E6B]/20 border border-[#6B8E6B]/30 px-3 py-1 text-xs font-bold text-[#9BC49B]">
-                        <FaUsers className="text-xs" /> {reserva.cantidad}{" "}
-                        {reserva.cantidad === 1 ? "persona" : "personas"}
+                      <span className="flex items-center gap-1.5 rounded-full bg-[#E8B86A]/10 border border-[#E8B86A]/20 px-3 py-1 text-xs font-bold text-[#E8B86A]">
+                        <FaTicketAlt className="text-xs" /> {reserva.cantidad}{" "}
+                        {reserva.cantidad === 1 ? "cupo" : "cupos"}
                       </span>
 
-                      <button
-                        onClick={() => setCancelingReserva(reserva)}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1 text-xs font-bold text-red-300 hover:bg-red-500/20 hover:text-white transition-colors"
-                        title="Cancelar reserva y liberar cupos"
-                      >
-                        <FaTrashAlt className="text-[10px]" /> Cancelar
-                      </button>
+                      {isPendiente && (
+                        <button
+                          onClick={() => setCancelingReserva(reserva)}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1 text-xs font-bold text-red-300 hover:bg-red-500/20 hover:text-white transition-colors"
+                          title="Cancelar reserva pendiente"
+                        >
+                          <FaTrashAlt className="text-[10px]" /> Cancelar
+                        </button>
+                      )}
                     </div>
                   </div>
 
-                  <div className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
-                    <div className="flex items-center gap-3 rounded-lg bg-white/[0.02] p-3 border border-white/5">
+                  <div className="grid gap-4 text-sm sm:grid-cols-2">
+                    <div className="flex items-center gap-3 rounded-2xl bg-white/[0.02] p-3.5 border border-white/5">
                       <FaCalendarAlt className="text-[#E8B86A] text-lg shrink-0" />
                       <div>
-                        <span className="block text-[11px] font-bold tracking-wider text-white/40">
-                          FECHA
+                        <span className="block text-[10px] font-bold tracking-wider text-white/40">
+                          FECHA Y SALA
                         </span>
-                        <span className="font-medium text-white capitalize">
+                        <span className="font-medium text-white capitalize text-xs">
                           {date.toLocaleDateString("es-CO", {
                             weekday: "long",
                             day: "numeric",
                             month: "long",
-                            year: "numeric",
-                          })}
+                          })}{" "}
+                          · Sala 16 puestos
                         </span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 rounded-lg bg-white/[0.02] p-3 border border-white/5">
+                    <div className="flex items-center gap-3 rounded-2xl bg-white/[0.02] p-3.5 border border-white/5">
                       <FaClock className="text-[#E8B86A] text-lg shrink-0" />
                       <div>
-                        <span className="block text-[11px] font-bold tracking-wider text-white/40">
-                          HORA
+                        <span className="block text-[10px] font-bold tracking-wider text-white/40">
+                          HORA DE INICIO
                         </span>
-                        <span className="font-medium text-white">
+                        <span className="font-medium text-white text-xs">
                           {date.toLocaleTimeString("es-CO", {
                             hour: "2-digit",
                             minute: "2-digit",
                           })}{" "}
-                          (Hora Colombia)
+                          (Armenia, Quindío)
                         </span>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Detalle de entradas y link a ticket */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-white/5 text-xs">
+                    <div className="text-white/60">
+                      {reserva.items && reserva.items.length > 0 && (
+                        <span>
+                          {reserva.items
+                            .map((it) => {
+                              const nombre =
+                                typeof it.tipoEntrada === "object"
+                                  ? it.tipoEntrada.nombre
+                                  : it.tipoEntrada;
+                              return `${nombre} ×${it.cantidad}`;
+                            })
+                            .join(", ")}
+                          {" · "}
+                        </span>
+                      )}
+                      <strong className="text-white">
+                        Total: ${(reserva.total || 0).toLocaleString("es-CO")}
+                      </strong>
+                    </div>
+
+                    {reserva.codigo && (
+                      <Link
+                        href={`/mi-reserva/${reserva.codigo}`}
+                        className="inline-flex items-center gap-1.5 font-bold text-[#E8B86A] hover:underline"
+                      >
+                        <FaQrcode /> Ver Ticket y Detalles →
+                      </Link>
+                    )}
                   </div>
                 </article>
               );

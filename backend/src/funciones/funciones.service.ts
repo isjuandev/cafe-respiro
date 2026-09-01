@@ -1,6 +1,7 @@
 import { Injectable, ConflictException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { fijarHora, HORA_FUNCION } from '../common/utils/horarios';
+import { getFiltroCuposOcupados } from '../reservas/reservas.utils';
 
 @Injectable()
 export class FuncionesService {
@@ -9,12 +10,17 @@ export class FuncionesService {
 
   async findProgramadas() {
     const ahora = new Date();
+    const filtroOcupados = getFiltroCuposOcupados(ahora);
+
     const funciones = await this.prisma.funcion.findMany({
       where: { fechaHora: { gte: ahora } },
       orderBy: { fechaHora: 'asc' },
       include: {
         pelicula: true,
-        reservas: { select: { cantidad: true } },
+        reservas: {
+          where: filtroOcupados,
+          select: { cantidad: true },
+        },
       },
     });
 
@@ -25,7 +31,7 @@ export class FuncionesService {
         ...rest,
         pelicula: f.pelicula,
         cuposOcupados: ocupados,
-        cuposDisponibles: f.cupoTotal - ocupados,
+        cuposDisponibles: Math.max(0, f.cupoTotal - ocupados),
       };
     });
   }
@@ -64,7 +70,6 @@ export class FuncionesService {
       return funcion;
     } catch (e: any) {
       if (e.code === 'P2002') {
-        // Puede venir de Funcion_fechaHora_key o Funcion_fechaSolo_key (DATE)
         throw new ConflictException('Ya existe una función para esa fecha. Sala única: máximo 1 función por día.');
       }
       throw e;

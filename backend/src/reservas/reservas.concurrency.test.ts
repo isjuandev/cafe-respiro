@@ -6,17 +6,30 @@
  */
 
 import { ReservasService } from './reservas.service';
-import { Prisma } from '@prisma/client';
+import { Prisma, ReservaEstado } from '@prisma/client';
 
 // Mock Prisma que simula Postgres FOR UPDATE + aggregate dentro de transacción
 function createMockPrisma(initial: {
   funcion: { id: string; cupoTotal: number; fechaHora: Date };
-  reservas: Array<{ id?: string; funcionId: string; contacto: string; cantidad: number; nombre?: string }>;
+  reservas: Array<{
+    id?: string;
+    funcionId: string;
+    contacto: string;
+    cantidad: number;
+    nombre?: string;
+    estado?: ReservaEstado;
+    expiraEn?: Date;
+  }>;
 }) {
   let funcion = { ...initial.funcion };
   let reservas = initial.reservas.map((r, i) => ({
     id: r.id || `res-init-${i}`,
+    codigo: `CIN-TEST${i}`,
     nombre: r.nombre || 'Cliente',
+    total: r.cantidad * 15000,
+    estado: r.estado || ReservaEstado.CONFIRMADA,
+    expiraEn: r.expiraEn || new Date(Date.now() + 3600000),
+    items: [],
     ...r,
   }));
   let notificationCalls: any[] = [];
@@ -43,6 +56,22 @@ function createMockPrisma(initial: {
   }
 
   const prisma: any = {
+    tipoEntrada: {
+      findMany: async () => [
+        { id: 'tipo_esencial', nombre: 'Esencial', precio: 15000, activo: true, orden: 1 },
+      ],
+      findFirst: async () => ({
+        id: 'tipo_esencial',
+        nombre: 'Esencial',
+        precio: 15000,
+        activo: true,
+        orden: 1,
+      }),
+      create: async (args: any) => ({
+        id: 'tipo_esencial',
+        ...args.data,
+      }),
+    },
     funcion: {
       findUnique: async ({ where }: any) => {
         if (where.id === funcion.id)
@@ -52,20 +81,22 @@ function createMockPrisma(initial: {
     },
     reserva: {
       findUnique: async ({ where }: any) => {
-        const found = reservas.find((r) => r.id === where.id);
+        const found = reservas.find((r) => r.id === where.id || r.codigo === where.codigo);
         if (!found) return null;
         return {
           ...found,
           funcion: { ...funcion, pelicula: { id: 'pel-1', titulo: 'Test' } },
         };
       },
-      delete: async ({ where }: any) => {
-        const idx = reservas.findIndex((r) => r.id === where.id);
-        if (idx >= 0) {
-          const deleted = reservas.splice(idx, 1)[0];
-          return deleted;
-        }
-        throw new Error('Not found');
+      update: async ({ where, data }: any) => {
+        const found = reservas.find((r) => r.id === where.id);
+        if (!found) throw new Error('Not found');
+        Object.assign(found, data);
+        return {
+          ...found,
+          funcion: { ...funcion, pelicula: { id: 'pel-1', titulo: 'Test' } },
+          items: [],
+        };
       },
     },
     notificationLog: {
@@ -92,26 +123,43 @@ function createMockPrisma(initial: {
           return [];
         },
         reserva: {
+          findFirst: async ({ where }: any) => {
+            return (
+              reservas.find(
+                (r) =>
+                  r.funcionId === where.funcionId &&
+                  r.contacto === where.contacto &&
+                  (where.estado ? r.estado === where.estado : true)
+              ) || null
+            );
+          },
+          findUnique: async ({ where }: any) => {
+            return reservas.find((r) => r.codigo === where.codigo) || null;
+          },
+          update: async ({ where, data }: any) => {
+            const found = reservas.find((r) => r.id === where.id);
+            if (found) Object.assign(found, data);
+            return found;
+          },
           aggregate: async ({ where }: any) => {
             const sum = reservas
-              .filter((r) => r.funcionId === where.funcionId)
+              .filter((r) => r.funcionId === where.funcionId && r.estado !== ReservaEstado.CANCELADA)
               .reduce((acc, r) => acc + r.cantidad, 0);
             return { _sum: { cantidad: sum || null } };
           },
           create: async ({ data }: any) => {
-            if (
-              reservas.some(
-                (r) => r.funcionId === data.funcionId && r.contacto === data.contacto
-              )
-            ) {
-              throw new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
-                code: 'P2002',
-                clientVersion: 'test',
-              } as any);
-            }
             const newReserva = {
               id: `res-${Date.now()}-${Math.random().toString(36).slice(2, 4)}`,
               ...data,
+              items: [
+                {
+                  tipoEntrada: { nombre: 'Esencial' },
+                  cantidad: data.cantidad,
+                  precioUnitario: 15000,
+                  subtotal: data.total,
+                },
+              ],
+              funcion: { id: funcion.id, fechaHora: funcion.fechaHora, pelicula: { titulo: 'Test' } },
             };
             reservas.push(newReserva);
             return newReserva;
@@ -142,9 +190,27 @@ function createMockPrisma(initial: {
 
 function createMockNotifications(prisma: any) {
   return {
-    notifyReservaConfirmada: async (reserva: any, funcion: any) => {
-      prisma.__addNotification({ reserva, funcion });
+    notifyReservaRegistrada: async (reserva: any, funcion: any) => {
+      prisma.__addNotification({ tipo: 'REGISTRADA', reserva, funcion });
     },
+    notifyPagoConfirmado: async (reserva: any, funcion: any) => {
+      prisma.__addNotification({ tipo: 'PAGO_CONFIRMADO', reserva, funcion });
+    },
+    notifyReservaConfirmada: async (reserva: any, funcion: any) => {
+      prisma.__addNotification({ tipo: 'CONFIRMADA', reserva, funcion });
+    },
+  } as any;
+}
+
+function createMockConfigPago() {
+  return {
+    getConfiguracion: async () => ({
+      banco: 'Bancolombia',
+      tipoCuenta: 'Ahorros',
+      numeroCuenta: '123-456789-01',
+      titular: 'Café Respiro',
+      telefonoWp: '573001234567',
+    }),
   } as any;
 }
 
@@ -162,17 +228,18 @@ async function run() {
       ],
     });
     const notifications = createMockNotifications(prisma);
-    const service = new ReservasService(prisma as any, notifications as any);
+    const configPago = createMockConfigPago();
+    const service = new ReservasService(prisma as any, notifications, configPago);
 
     const reqA = service.reservar(
       'func-1',
-      { cantidad: 2 } as any,
-      { contacto: 'alice@test.com', nombre: 'Alice' }
+      { cantidad: 2, contacto: 'alice@test.com', nombre: 'Alice' },
+      null
     );
     const reqB = service.reservar(
       'func-1',
-      { cantidad: 2 } as any,
-      { contacto: 'bob@test.com', nombre: 'Bob' }
+      { cantidad: 2, contacto: 'bob@test.com', nombre: 'Bob' },
+      null
     );
 
     const results = await Promise.allSettled([reqA, reqB]);
@@ -190,7 +257,7 @@ async function run() {
       throw new Error(`Debe ganar 1 y fallar 1, got ${fulfilled.length}/${rejected.length}`);
     if (total > 15) throw new Error(`Overselling! total ${total} > 15`);
     if (total !== 15) throw new Error(`Total debe ser 15 (13+2), got ${total}`);
-    if (!rejected[0].reason.message.includes('Cupo lleno'))
+    if (!rejected[0].reason.message.includes('Cupo'))
       throw new Error('Rechazo debe ser por cupo lleno');
     console.log('✓ Test 1 PASÓ: No overselling, rollback correcto, concurrencia segura\n');
   }
@@ -202,10 +269,14 @@ async function run() {
       funcion: { id: 'func-1', cupoTotal: 15, fechaHora: future },
       reservas: [{ funcionId: 'func-1', contacto: 'a@test.com', cantidad: 13 }],
     });
-    const service = new ReservasService(prisma as any, createMockNotifications(prisma) as any);
+    const service = new ReservasService(
+      prisma as any,
+      createMockNotifications(prisma),
+      createMockConfigPago()
+    );
     const results = await Promise.allSettled([
-      service.reservar('func-1', { cantidad: 1 } as any, { contacto: 'x@test.com', nombre: 'A' }),
-      service.reservar('func-1', { cantidad: 1 } as any, { contacto: 'y@test.com', nombre: 'B' }),
+      service.reservar('func-1', { cantidad: 1, contacto: 'x@test.com', nombre: 'A' }, null),
+      service.reservar('func-1', { cantidad: 1, contacto: 'y@test.com', nombre: 'B' }, null),
     ]);
     const state = prisma.__getState();
     const total = state.reservas.reduce((acc: number, r: any) => acc + r.cantidad, 0);
@@ -216,35 +287,39 @@ async function run() {
     console.log('✓ Test 2 PASÓ: 1+1 con cupo 2 permite ambos sin oversell\n');
   }
 
-  console.log('=== Test 3: Idempotencia mismo contacto autenticado, segunda da conflicto ===');
+  console.log('=== Test 3: Idempotencia mismo contacto con reserva pendiente activa ===');
   {
     const future = new Date(Date.now() + 86400000);
     const prisma = createMockPrisma({
       funcion: { id: 'func-1', cupoTotal: 15, fechaHora: future },
       reservas: [],
     });
-    const service = new ReservasService(prisma as any, createMockNotifications(prisma) as any);
+    const service = new ReservasService(
+      prisma as any,
+      createMockNotifications(prisma),
+      createMockConfigPago()
+    );
     const r1 = await service.reservar(
       'func-1',
-      { cantidad: 2 } as any,
-      { contacto: 'ana@test.com', nombre: 'Ana' }
+      { cantidad: 2, contacto: 'ana@test.com', nombre: 'Ana' },
+      null
     );
-    console.log('Primera reserva OK, cuposDisponibles:', r1.cuposDisponibles);
+    console.log('Primera reserva OK, codigo:', r1.reserva.codigo);
     try {
       await service.reservar(
         'func-1',
-        { cantidad: 2 } as any,
-        { contacto: 'ana@test.com', nombre: 'Ana' }
+        { cantidad: 2, contacto: 'ana@test.com', nombre: 'Ana' },
+        null
       );
       throw new Error('Segunda con mismo contacto debe fallar');
     } catch (e: any) {
-      if (!e.message.includes('Ya tienes una reserva') && !e.message.includes('P2002'))
+      if (!e.message.includes('Ya tienes una reserva pendiente'))
         throw new Error(`Mensaje incorrecto: ${e.message}`);
       console.log('✓ Segunda rechazada correctamente:', e.message);
     }
     const state = prisma.__getState();
     if (state.reservas.length !== 1) throw new Error('No debe duplicar reserva');
-    console.log('✓ Test 3 PASÓ: idempotencia @@unique([funcionId, contacto])\n');
+    console.log('✓ Test 3 PASÓ: idempotencia y prevención de acumulación pendiente\n');
   }
 
   console.log('=== Test 4: Cancelación exitosa y liberación de cupos ===');
@@ -253,12 +328,29 @@ async function run() {
     const prisma = createMockPrisma({
       funcion: { id: 'func-1', cupoTotal: 15, fechaHora: future },
       reservas: [
-        { id: 'res-cancel-1', funcionId: 'func-1', contacto: 'cancel@test.com', cantidad: 3 },
+        {
+          id: 'res-cancel-1',
+          funcionId: 'func-1',
+          contacto: 'cancel@test.com',
+          cantidad: 3,
+          estado: ReservaEstado.PENDIENTE_PAGO,
+        },
+        {
+          id: 'res-cancel-confirmed',
+          funcionId: 'func-1',
+          contacto: 'confirmed@test.com',
+          cantidad: 2,
+          estado: ReservaEstado.CONFIRMADA,
+        },
       ],
     });
-    const service = new ReservasService(prisma as any, createMockNotifications(prisma) as any);
+    const service = new ReservasService(
+      prisma as any,
+      createMockNotifications(prisma),
+      createMockConfigPago()
+    );
 
-    // Intento de cancelar por otro usuario no admin (debe ser Forbidden)
+    // 1. Intento de cancelar por otro usuario no admin (debe ser Forbidden)
     try {
       await service.cancelar('res-cancel-1', { contacto: 'otro@test.com', role: 'cliente' });
       throw new Error('Usuario no autorizado no debe poder cancelar reserva ajena');
@@ -267,16 +359,35 @@ async function run() {
       console.log('✓ Rechazado intento de cancelación ajena (403 Forbidden)');
     }
 
-    // Cancelación legítima por el dueño de la reserva
+    // 2. Intento de cancelar reserva ya confirmada/pagada por el cliente (debe ser Conflict)
+    try {
+      await service.cancelar('res-cancel-confirmed', {
+        contacto: 'confirmed@test.com',
+        role: 'cliente',
+      });
+      throw new Error('Cliente no debe poder cancelar reserva pagada/confirmada');
+    } catch (e: any) {
+      if (!e.message.includes('No puedes cancelar una reserva que ya ha sido pagada')) throw e;
+      console.log('✓ Rechazado intento de cancelación de reserva confirmada/pagada (409 Conflict)');
+    }
+
+    // 3. Cancelación legítima de reserva pendiente por el dueño de la reserva
     const cancelRes = await service.cancelar('res-cancel-1', {
       contacto: 'cancel@test.com',
       role: 'cliente',
     });
-    console.log('✓ Cancelación exitosa:', cancelRes.message, 'Cupos liberados:', cancelRes.cuposLiberados);
+    console.log('✓ Cancelación exitosa de reserva pendiente:', cancelRes.message, 'Cupos liberados:', cancelRes.cuposLiberados);
+
+    // 4. Cancelación administrativa de reserva confirmada permitida para staff
+    const adminCancelRes = await service.cancelar('res-cancel-confirmed', {
+      role: 'admin',
+    });
+    console.log('✓ Admin puede cancelar reserva confirmada:', adminCancelRes.message);
 
     const state = prisma.__getState();
-    if (state.reservas.length !== 0) throw new Error('La reserva debe ser eliminada');
-    console.log('✓ Test 4 PASÓ: cancelación segura y liberación de cupos\n');
+    const resRow = state.reservas.find((r: any) => r.id === 'res-cancel-1');
+    if (resRow?.estado !== ReservaEstado.CANCELADA) throw new Error('La reserva debe ser marcada como CANCELADA');
+    console.log('✓ Test 4 PASÓ: reglas de cancelación y bloqueo de reservas pagadas validadas\n');
   }
 
   console.log('Todos los tests de carrera y cancelación de reservas PASARON.');

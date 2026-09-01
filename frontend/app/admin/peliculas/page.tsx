@@ -396,7 +396,7 @@ export default function PeliculasAdminPage() {
             return (
               <div
                 key={p.id}
-                className="group relative flex flex-col overflow-hidden rounded-xl border border-white/10 bg-[#121212] transition-all duration-200 hover:border-[#E8B86A]/40 hover:shadow-xl hover:shadow-[#E8B86A]/5"
+                className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#111114] transition-colors hover:border-white/25"
               >
                 {/* Póster Compacto */}
                 <div className="relative aspect-[2/3] w-full overflow-hidden bg-black/50">
@@ -409,17 +409,17 @@ export default function PeliculasAdminPage() {
                         "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&h=750&fit=crop";
                     }}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#121212] via-transparent to-black/20" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#111114] via-transparent to-black/20" />
 
                   {/* Badges superiores sobre el póster */}
                   <div className="absolute top-2 left-2 right-2 flex items-center justify-between gap-1">
                     {p.anio && (
-                      <span className="rounded bg-black/80 px-1.5 py-0.5 text-[9px] font-bold text-white backdrop-blur border border-white/10">
+                      <span className="rounded bg-black/90 px-1.5 py-0.5 text-[9px] font-bold text-white border border-white/10">
                         {p.anio}
                       </span>
                     )}
                     {p.duracionMin && (
-                      <span className="rounded bg-black/80 px-1.5 py-0.5 text-[9px] font-bold text-[#E8B86A] backdrop-blur border border-white/10">
+                      <span className="rounded bg-black/90 px-1.5 py-0.5 text-[9px] font-bold text-[#E8B86A] border border-white/10">
                         {p.duracionMin}m
                       </span>
                     )}
@@ -428,10 +428,10 @@ export default function PeliculasAdminPage() {
                   {/* Badge de funciones programadas */}
                   <div className="absolute bottom-2 left-2">
                     <span
-                      className={`rounded px-1.5 py-0.5 text-[9px] font-bold backdrop-blur ${
+                      className={`rounded px-1.5 py-0.5 text-[9px] font-bold ${
                         funcionesCount > 0
-                          ? "bg-[#6B8E6B]/80 text-white"
-                          : "bg-black/60 text-white/50 border border-white/10"
+                          ? "bg-green-600/80 text-white"
+                          : "bg-black/80 text-white/50 border border-white/10"
                       }`}
                     >
                       {funcionesCount > 0 ? `${funcionesCount} func.` : "Sin programar"}
@@ -550,10 +550,10 @@ export default function PeliculasAdminPage() {
       {selectedMovieForProgram && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
-            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/85"
             onClick={() => !programLoading && setSelectedMovieForProgram(null)}
           />
-          <div className="relative w-full max-w-md rounded-2xl border border-[#E8B86A]/30 bg-[#141414] p-5 shadow-2xl">
+          <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-[#111114] p-5">
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
                 <FaCalendarPlus className="text-[#E8B86A]" /> Programar en Cartelera
@@ -567,7 +567,7 @@ export default function PeliculasAdminPage() {
               </button>
             </div>
 
-            <div className="mt-3 flex gap-3 items-center bg-white/5 p-2.5 rounded-xl border border-white/5">
+            <div className="mt-3 flex gap-3 items-center bg-[#16161A] p-2.5 rounded-xl border border-white/5">
               <img
                 src={
                   selectedMovieForProgram.posterUrl ||
@@ -600,7 +600,7 @@ export default function PeliculasAdminPage() {
                   value={programFecha}
                   onChange={(e) => setProgramFecha(e.target.value)}
                   min={new Date().toISOString().split("T")[0]}
-                  className="control-dark mt-1 w-full rounded-xl px-3 py-2 text-xs text-white focus:border-[#E8B86A]/50 focus:outline-none"
+                  className="control-dark mt-1 w-full rounded-xl px-3 py-2 text-xs text-white focus:border-[#E8B86A] focus:outline-none"
                 />
                 <span className="text-[10px] text-[#E8B86A] mt-1 block">
                   ● Horario fijo: 7:00 PM (19:00 Hora Colombia)
@@ -618,7 +618,7 @@ export default function PeliculasAdminPage() {
                   required
                   value={programCupos}
                   onChange={(e) => setProgramCupos(parseInt(e.target.value, 10) || 16)}
-                  className="control-dark mt-1 w-full rounded-xl px-3 py-2 text-xs text-white focus:border-[#E8B86A]/50 focus:outline-none"
+                  className="control-dark mt-1 w-full rounded-xl px-3 py-2 text-xs text-white focus:border-[#E8B86A] focus:outline-none"
                 />
               </div>
 
@@ -653,10 +653,10 @@ export default function PeliculasAdminPage() {
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
-            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/85"
             onClick={() => setShowAddModal(false)}
           />
-          <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[#E8B86A]/20 bg-[#141414] p-5 shadow-2xl">
+          <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-white/10 bg-[#111114] p-5">
             <div className="flex items-center justify-between border-b border-white/5 pb-3">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <FaPlus className="text-[#E8B86A] text-xs" /> Agregar Película al Catálogo

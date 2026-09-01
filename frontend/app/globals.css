@@ -72,7 +72,7 @@
   }
 }
 
-/* Café Respiro Custom Utilities & Atmosphere */
+/* Café Respiro Custom Utilities & Atmosphere - Neutral & Natural */
 @layer utilities {
   .text-gold {
     color: #E8B86A;
@@ -83,37 +83,29 @@
   .border-gold {
     border-color: #E8B86A;
   }
-  .bg-cine {
-    background: linear-gradient(180deg, #0d0d12 0%, #070709 100%);
-  }
-
-  .glow-gold {
-    box-shadow: 0 0 40px -10px rgba(232, 184, 106, 0.25);
-  }
-
-  .glow-gold-sm {
-    box-shadow: 0 0 20px -5px rgba(232, 184, 106, 0.2);
-  }
 
   .surface-card {
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 1rem;
-    background-color: #121215;
+    background-color: #111114;
   }
 
   .surface-card-hover {
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: border-color 0.2s ease, background-color 0.2s ease;
   }
   .surface-card-hover:hover {
-    border-color: rgba(232, 184, 106, 0.35);
-    box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.7), 0 0 24px -6px rgba(232, 184, 106, 0.15);
-    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.18);
+    background-color: #151519;
   }
 
   .control-dark {
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 0.75rem;
-    background-color: #0d0d10;
+    background-color: #16161A;
     color: #f5f5f5;
+  }
+
+  .control-dark:focus {
+    border-color: #E8B86A;
   }
 }

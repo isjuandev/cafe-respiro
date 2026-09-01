@@ -32,8 +32,23 @@ export class AuthController {
   @UseGuards(AuthGuard)
   @Get('auth/me')
   async me(@Req() req: Request) {
-    const user = (req as any).user;
-    return { authenticated: true, user };
+    const jwtUser = (req as any).user;
+    if (jwtUser && jwtUser.role === 'cliente' && jwtUser.sub) {
+      const usuario = await this.auth.getUsuarioById(jwtUser.sub);
+      if (usuario) {
+        return {
+          authenticated: true,
+          user: {
+            id: usuario.id,
+            sub: usuario.id,
+            nombre: usuario.nombre,
+            contacto: usuario.contacto,
+            role: 'cliente' as const,
+          },
+        };
+      }
+    }
+    return { authenticated: true, user: jwtUser };
   }
 
   @UseGuards(AuthGuard)
@@ -41,7 +56,7 @@ export class AuthController {
   @Get('mis-reservas')
   async myReservations(@Req() req: Request) {
     const user = (req as any).user;
-    return { reservas: await this.auth.findMyReservations(user.contacto) };
+    return { reservas: await this.auth.findMyReservations(user.sub, user.contacto) };
   }
 
   private setCookie(res: Response, token: string) {

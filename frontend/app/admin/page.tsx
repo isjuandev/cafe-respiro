@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { FaFilm, FaLightbulb, FaTicketAlt, FaUsers, FaChartBar } from "react-icons/fa";
+import Link from "next/link";
+import { FaFilm, FaLightbulb, FaTicketAlt, FaUsers, FaChartBar, FaArrowRight } from "react-icons/fa";
 
 interface Suggestion {
   id: string;
@@ -30,6 +31,7 @@ interface StatItem {
   label: string;
   value: number;
   icon: React.ComponentType<{ className?: string }>;
+  href?: string;
 }
 
 export default function AdminDashboardPage() {
@@ -86,20 +88,28 @@ export default function AdminDashboardPage() {
 
   if (loading) {
     return (
-      <div className="space-y-4">
-        <div className="h-24 animate-pulse rounded-xl bg-white/5" />
-        <div className="h-64 animate-pulse rounded-xl bg-white/5" />
+      <div className="space-y-4 animate-pulse">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-24 rounded-2xl bg-white/5" />
+          ))}
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="h-64 rounded-2xl bg-white/5" />
+          <div className="h-64 rounded-2xl bg-white/5" />
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="rounded-xl bg-red-500/10 p-6 text-red-300" role="alert">
-        <p>{error}</p>
+      <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-red-300" role="alert">
+        <p className="font-bold">Error al cargar métricas</p>
+        <p className="text-xs text-white/60 mt-1">{error}</p>
         <button
           onClick={loadMetrics}
-          className="mt-3 rounded-lg bg-white px-4 py-2 text-xs font-bold text-black hover:bg-white/90"
+          className="mt-4 rounded-xl bg-[#E8B86A] px-4 py-2 text-xs font-bold text-black uppercase hover:bg-[#D4A574]"
         >
           Reintentar
         </button>
@@ -112,51 +122,75 @@ export default function AdminDashboardPage() {
   const current = functions[0];
 
   const stats: StatItem[] = [
-    { label: "Reservas", value: reservas, icon: FaTicketAlt },
-    { label: "Cupos libres", value: current?.cuposDisponibles ?? 0, icon: FaUsers },
-    { label: "Películas", value: movies.length, icon: FaFilm },
+    { label: "Reservas Activas", value: reservas, icon: FaTicketAlt, href: "/admin/reservas" },
+    { label: "Cupos Libres Hoy", value: current?.cuposDisponibles ?? 0, icon: FaUsers, href: "/admin/funciones" },
+    { label: "Películas en Catálogo", value: movies.length, icon: FaFilm, href: "/admin/peliculas" },
     {
-      label: "Votos",
+      label: "Votos Totales",
       value: suggestions.reduce((total, item) => total + (item._count?.votos || 0), 0),
       icon: FaChartBar,
+      href: "/admin/votaciones",
     },
-    { label: "Sugerencias pendientes", value: pending, icon: FaLightbulb },
+    { label: "Sugerencias Pendientes", value: pending, icon: FaLightbulb, href: "/admin/sugerencias" },
   ];
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold text-white">Dashboard</h2>
-        <p className="mt-1 text-sm text-white/60">Resumen operativo de Café Respiro.</p>
+        <h2 className="text-2xl font-black text-white font-serif">Resumen Operativo</h2>
+        <p className="mt-1 text-xs text-white/60">Estado en tiempo real de la sala boutique, taquilla y cartelera.</p>
       </div>
 
+      {/* Grid de Métricas */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        {stats.map(({ label, value, icon: Icon }) => (
-          <div key={label} className="rounded-xl border border-white/10 bg-[#141414] p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#E8B86A]/15 text-[#E8B86A]">
-                <Icon />
+        {stats.map(({ label, value, icon: Icon, href }) => {
+          const content = (
+            <div className="rounded-2xl border border-white/10 bg-[#111114] p-4 transition-colors hover:border-white/20">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-white/50">{label}</span>
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#E8B86A]/10 text-[#E8B86A] border border-[#E8B86A]/20">
+                  <Icon className="text-xs" />
+                </div>
               </div>
-              <span className="text-xs text-white/60">{label}</span>
+              <p className="mt-3 text-3xl font-black text-white font-serif tracking-tight">{value}</p>
             </div>
-            <p className="mt-4 text-2xl font-bold text-white">{value}</p>
-          </div>
-        ))}
+          );
+
+          if (href) {
+            return (
+              <Link key={label} href={href} className="block">
+                {content}
+              </Link>
+            );
+          }
+          return <div key={label}>{content}</div>;
+        })}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <section className="rounded-xl border border-white/10 bg-[#141414] p-5">
-          <h2 className="text-xs font-bold tracking-[0.15em] text-white">VOTOS POR SUGERENCIA</h2>
-          <div className="mt-5 space-y-4">
+      {/* Tablas y Listas */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Votos por sugerencia */}
+        <section className="rounded-3xl border border-white/10 bg-[#111114] p-6 space-y-4">
+          <div className="flex items-center justify-between border-b border-white/10 pb-3">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-[#E8B86A] flex items-center gap-2">
+              <FaChartBar /> Votaciones de la Comunidad
+            </h3>
+            <Link href="/admin/votaciones" className="text-[11px] font-bold text-white/60 hover:text-white flex items-center gap-1">
+              Gestionar <FaArrowRight className="text-[9px]" />
+            </Link>
+          </div>
+
+          <div className="space-y-3 pt-1">
             {suggestions.slice(0, 6).map((item) => (
-              <div key={item.id}>
+              <div key={item.id} className="rounded-xl bg-[#16161A] p-3 border border-white/5 space-y-1.5">
                 <div className="flex justify-between text-xs">
-                  <span className="truncate text-white/70">{item.titulo}</span>
-                  <span className="text-[#E8B86A]">{item._count?.votos || 0}</span>
+                  <span className="font-bold text-white truncate max-w-[280px]">{item.titulo}</span>
+                  <span className="font-mono font-bold text-[#E8B86A]">{item._count?.votos || 0} votos</span>
                 </div>
-                <div className="mt-2 h-2 rounded-full bg-white/10">
+                <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-[#E8B86A]"
+                    className="h-full bg-[#E8B86A]"
                     style={{
                       width: `${Math.max(4, ((item._count?.votos || 0) / maxVotes) * 100)}%`,
                     }}
@@ -165,35 +199,47 @@ export default function AdminDashboardPage() {
               </div>
             ))}
             {!suggestions.length && (
-              <p className="text-sm text-white/40">Aún no hay datos de votación.</p>
+              <p className="text-xs text-white/40 italic py-4 text-center">Aún no hay datos de votación registrados.</p>
             )}
           </div>
         </section>
 
-        <section className="rounded-xl border border-white/10 bg-[#141414] p-5">
-          <h2 className="text-xs font-bold tracking-[0.15em] text-white">PRÓXIMAS FUNCIONES</h2>
-          <div className="mt-5 space-y-3">
+        {/* Próximas Funciones */}
+        <section className="rounded-3xl border border-white/10 bg-[#111114] p-6 space-y-4">
+          <div className="flex items-center justify-between border-b border-white/10 pb-3">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-[#E8B86A] flex items-center gap-2">
+              <FaFilm /> Funciones Programadas
+            </h3>
+            <Link href="/admin/funciones" className="text-[11px] font-bold text-white/60 hover:text-white flex items-center gap-1">
+              Ver todas <FaArrowRight className="text-[9px]" />
+            </Link>
+          </div>
+
+          <div className="space-y-3 pt-1">
             {functions.slice(0, 5).map((item) => (
               <div
                 key={item.id}
-                className="flex items-center justify-between gap-4 rounded-lg bg-white/[0.03] p-3"
+                className="flex items-center justify-between gap-4 rounded-xl bg-[#16161A] p-3 border border-white/5"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-white">{item.pelicula.titulo}</p>
-                  <p className="text-xs text-white/50">
+                  <p className="truncate text-xs font-bold text-white font-serif">{item.pelicula.titulo}</p>
+                  <p className="text-[10px] text-white/50">
                     {new Date(item.fechaHora).toLocaleString("es-CO", {
                       dateStyle: "medium",
                       timeStyle: "short",
                     })}
                   </p>
                 </div>
-                <span className="shrink-0 text-xs text-[#E8B86A]">
-                  {item.cuposDisponibles ?? 0}/{item.cupoTotal}
-                </span>
+                <div className="shrink-0 text-right">
+                  <span className="text-[10px] text-white/40 block">Aforo</span>
+                  <span className="text-xs font-mono font-bold text-[#E8B86A]">
+                    {item.cuposDisponibles ?? 0}/{item.cupoTotal} disp.
+                  </span>
+                </div>
               </div>
             ))}
             {!functions.length && (
-              <p className="text-sm text-white/40">No hay funciones programadas.</p>
+              <p className="text-xs text-white/40 italic py-4 text-center">No hay funciones programadas.</p>
             )}
           </div>
         </section>

@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { normalizeContacto } from '../common/utils/normalize';
 import { AdminService } from '../admin/admin.service';
 import { RegisterDto, UnifiedLoginDto } from './dto/auth.dto';
+import { getEstadoEfectivo } from '../reservas/reservas.utils';
 
 @Injectable()
 export class AuthService {
@@ -14,24 +15,79 @@ export class AuthService {
     const contacto = normalizeContacto(dto.contacto);
     const existing = await this.prisma.usuario.findUnique({ where: { contacto } });
     if (existing) throw new ConflictException('Ya existe una cuenta con ese contacto');
-    const usuario = await this.prisma.usuario.create({ data: { nombre: dto.nombre.trim(), contacto, passwordHash: await bcrypt.hash(dto.password, 12) } });
-    return { usuario: this.publicUser(usuario), role: 'cliente' as const, token: this.signToken(usuario.id, 'cliente', contacto) };
+    const usuario = await this.prisma.usuario.create({
+      data: { nombre: dto.nombre.trim(), contacto, passwordHash: await bcrypt.hash(dto.password, 12) },
+    });
+    return {
+      usuario: this.publicUser(usuario),
+      role: 'cliente' as const,
+      token: this.signToken(usuario.id, 'cliente', contacto, usuario.nombre),
+    };
   }
 
   async login(dto: UnifiedLoginDto) {
-    if (this.admin.validateCredentials(dto.usuario, dto.password)) return { role: 'admin' as const, token: this.admin.signToken() };
+    if (this.admin.validateCredentials(dto.usuario, dto.password)) {
+      return { role: 'admin' as const, token: this.admin.signToken() };
+    }
     const contacto = normalizeContacto(dto.usuario);
     const usuario = await this.prisma.usuario.findUnique({ where: { contacto } });
-    if (!usuario || !(await bcrypt.compare(dto.password, usuario.passwordHash))) throw new UnauthorizedException('Usuario o contraseña incorrectos');
-    return { usuario: this.publicUser(usuario), role: 'cliente' as const, token: this.signToken(usuario.id, 'cliente', contacto) };
+    if (!usuario || !(await bcrypt.compare(dto.password, usuario.passwordHash))) {
+      throw new UnauthorizedException('Usuario o contraseña incorrectos');
+    }
+    return {
+      usuario: this.publicUser(usuario),
+      role: 'cliente' as const,
+      token: this.signToken(usuario.id, 'cliente', contacto, usuario.nombre),
+    };
   }
 
-  async findMyReservations(contacto: string) {
-    return this.prisma.reserva.findMany({ where: { contacto: normalizeContacto(contacto) }, include: { funcion: { include: { pelicula: true } } }, orderBy: { funcion: { fechaHora: 'asc' } } });
+  async getUsuarioById(id: string) {
+    const usuario = await this.prisma.usuario.findUnique({ where: { id } });
+    if (!usuario) return null;
+    return this.publicUser(usuario);
   }
 
-  private signToken(sub: string, role: 'cliente', contacto: string) {
-    return jwt.sign({ sub, role, contacto }, process.env.JWT_SECRET || 'dev-secret-min-32-chars', { expiresIn: process.env.JWT_EXPIRES_IN || '8h' } as any);
+  async findMyReservations(usuarioId?: string, contacto?: string) {
+    const ahora = new Date();
+    const orFilters: any[] = [];
+
+    if (usuarioId) {
+      orFilters.push({ usuarioId });
+    }
+    if (contacto) {
+      const contactoNorm = normalizeContacto(contacto);
+      orFilters.push({ contacto: contactoNorm });
+      orFilters.push({ email: contacto });
+      if (contactoNorm !== contacto) {
+        orFilters.push({ email: contactoNorm });
+      }
+    }
+
+    if (orFilters.length === 0) return [];
+
+    const reservas = await this.prisma.reserva.findMany({
+      where: {
+        OR: orFilters,
+      },
+      include: {
+        funcion: { include: { pelicula: true } },
+        items: { include: { tipoEntrada: true } },
+      },
+      orderBy: { funcion: { fechaHora: 'asc' } },
+    });
+
+    return reservas.map((r) => ({
+      ...r,
+      estadoEfectivo: getEstadoEfectivo(r, ahora),
+    }));
+  }
+
+  private signToken(sub: string, role: 'cliente', contacto: string, nombre?: string) {
+    return jwt.sign(
+      { sub, role, contacto, ...(nombre ? { nombre } : {}) },
+      process.env.JWT_SECRET || 'dev-secret-min-32-chars',
+      { expiresIn: process.env.JWT_EXPIRES_IN || '8h' } as any
+    );
   }
 
   private publicUser(usuario: { id: string; nombre: string; contacto: string }) {

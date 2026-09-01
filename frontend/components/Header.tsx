@@ -44,18 +44,27 @@ export function Header() {
 
   async function handleLogout() {
     try {
+      if (typeof window !== "undefined") {
+        sessionStorage.clear();
+        localStorage.clear();
+      }
       await fetch("/api/auth/logout", {
         method: "POST",
         credentials: "include",
       });
-      window.location.href = "/login";
+      setUser(null);
+      window.location.href = "/";
     } catch {
-      window.location.href = "/login";
+      if (typeof window !== "undefined") {
+        sessionStorage.clear();
+        localStorage.clear();
+      }
+      window.location.href = "/";
     }
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#070709]/90 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#070709]">
       <div className="mx-auto flex h-[68px] max-w-[1280px] items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand / Logo */}
         <Link href="/" className="flex items-center gap-3 group">

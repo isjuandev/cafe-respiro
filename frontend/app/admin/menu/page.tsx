@@ -2,7 +2,7 @@
 
 import { useEffect, useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { FaPlus, FaEdit, FaTrashAlt, FaCheck, FaTimes, FaImage } from "react-icons/fa";
+import { FaPlus, FaEdit, FaTrashAlt, FaImage } from "react-icons/fa";
 
 interface MenuItem {
   id: string;
@@ -189,49 +189,49 @@ export default function AdminMenuPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-white">CARTA Y MENÚ</h1>
-        <p className="mt-1 text-sm text-white/60">
+        <h2 className="text-2xl font-black text-white font-serif">Carta y Menú de Restaurante</h2>
+        <p className="mt-1 text-xs text-white/60">
           Gestiona las categorías y productos de comida, café de especialidad y bebidas de Café Respiro.
         </p>
       </div>
 
       {message && (
-        <div className="rounded-xl border border-green-500/20 bg-green-500/10 p-4 text-sm text-green-300">
+        <div className="rounded-2xl border border-green-500/20 bg-green-500/10 p-3.5 text-xs text-green-300">
           {message}
         </div>
       )}
 
       {error && (
-        <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">
+        <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-3.5 text-xs text-red-300">
           {error}
         </div>
       )}
 
-      <div className="grid gap-8 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-3">
         {/* Columna Izquierda: Listado de Categorías y Productos */}
         <div className="space-y-6 lg:col-span-2">
           {categorias === null && (
             <div className="space-y-4">
-              <div className="h-32 animate-pulse rounded-2xl bg-white/5" />
-              <div className="h-32 animate-pulse rounded-2xl bg-white/5" />
+              <div className="h-32 animate-pulse rounded-3xl bg-white/5" />
+              <div className="h-32 animate-pulse rounded-3xl bg-white/5" />
             </div>
           )}
 
           {categorias?.map((cat) => (
-            <div key={cat.id} className="surface-card overflow-hidden">
-              <div className="flex items-center justify-between border-b border-white/5 bg-white/[0.02] px-5 py-3">
+            <div key={cat.id} className="rounded-3xl border border-white/10 bg-[#111114] overflow-hidden">
+              <div className="flex items-center justify-between border-b border-white/10 bg-[#16161A] px-5 py-3.5">
                 <div className="flex items-center gap-3">
-                  <h2 className="font-bold text-white text-base">{cat.nombre}</h2>
-                  <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs text-white/60">
+                  <h3 className="font-black text-white text-base font-serif">{cat.nombre}</h3>
+                  <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-bold text-white/60">
                     {cat.items.length} productos
                   </span>
                 </div>
                 <button
                   onClick={() => deleteCategory(cat.id)}
                   disabled={saving || cat.items.length > 0}
-                  className="text-xs text-red-400 hover:text-red-300 disabled:opacity-20 disabled:cursor-not-allowed"
+                  className="text-xs text-red-400 hover:text-red-300 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
                   title={cat.items.length > 0 ? "Vacía la categoría antes de eliminar" : "Eliminar"}
                 >
                   <FaTrashAlt />
@@ -239,13 +239,13 @@ export default function AdminMenuPage() {
               </div>
 
               {cat.items.length === 0 ? (
-                <p className="p-6 text-center text-xs text-white/40">Sin productos en esta categoría</p>
+                <p className="p-6 text-center text-xs text-white/40 italic">Sin productos en esta categoría</p>
               ) : (
                 <div className="divide-y divide-white/5">
                   {cat.items.map((item) => (
                     <div
                       key={item.id}
-                      className={`flex items-center justify-between gap-4 p-4 transition-colors ${
+                      className={`flex items-center justify-between gap-4 p-4 transition-colors hover:bg-white/[0.02] ${
                         !item.disponible ? "opacity-50" : ""
                       }`}
                     >
@@ -254,17 +254,17 @@ export default function AdminMenuPage() {
                           <img
                             src={item.imagenUrl}
                             alt={item.nombre}
-                            className="h-12 w-12 rounded-xl object-cover border border-white/10 shrink-0"
+                            className="h-12 w-12 rounded-xl object-cover border border-white/10 shrink-0 bg-black"
                           />
                         ) : (
-                          <div className="h-12 w-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 shrink-0">
+                          <div className="h-12 w-12 rounded-xl bg-[#16161A] border border-white/10 flex items-center justify-center text-white/20 shrink-0">
                             <FaImage />
                           </div>
                         )}
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="font-bold text-sm text-white truncate">{item.nombre}</span>
-                            <span className="text-xs font-bold text-[#E8B86A]">
+                            <span className="text-xs font-mono font-bold text-[#E8B86A]">
                               {moneyFormatter.format(item.precio)}
                             </span>
                           </div>
@@ -278,10 +278,10 @@ export default function AdminMenuPage() {
                         <button
                           onClick={() => toggleAvailability(item.id)}
                           disabled={saving}
-                          className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
+                          className={`rounded-xl px-3 py-1 text-xs font-bold transition-colors ${
                             item.disponible
-                              ? "bg-green-500/10 text-green-300 hover:bg-green-500/20"
-                              : "bg-white/5 text-white/40 hover:bg-white/10"
+                              ? "bg-green-500/10 text-green-400 border border-green-500/25 hover:bg-green-500/20"
+                              : "bg-white/5 text-white/40 border border-white/10 hover:bg-white/10"
                           }`}
                         >
                           {item.disponible ? "Disponible" : "Agotado"}
@@ -289,7 +289,7 @@ export default function AdminMenuPage() {
                         <button
                           onClick={() => startEditItem(item)}
                           disabled={saving}
-                          className="rounded-lg bg-white/5 p-2 text-white/70 hover:bg-white/10 hover:text-white"
+                          className="rounded-xl border border-white/10 bg-white/5 p-2 text-white/70 hover:bg-white/10 hover:text-white transition-colors"
                           title="Editar"
                         >
                           <FaEdit className="text-xs" />
@@ -297,7 +297,7 @@ export default function AdminMenuPage() {
                         <button
                           onClick={() => deleteItem(item.id)}
                           disabled={saving}
-                          className="rounded-lg bg-red-500/10 p-2 text-red-300 hover:bg-red-500/20"
+                          className="rounded-xl border border-red-500/20 bg-red-500/10 p-2 text-red-300 hover:bg-red-500/20 transition-colors"
                           title="Eliminar"
                         >
                           <FaTrashAlt className="text-xs" />
@@ -314,42 +314,42 @@ export default function AdminMenuPage() {
         {/* Columna Derecha: Formularios de Categoría y Producto */}
         <div className="space-y-6">
           {/* Formulario: Nueva Categoría */}
-          <form onSubmit={createCategory} className="surface-card p-5">
-            <h2 className="text-xs font-bold tracking-[0.15em] text-white">NUEVA CATEGORÍA</h2>
-            <label htmlFor="cat-name" className="mt-3 block text-xs text-white/60">
+          <form onSubmit={createCategory} className="rounded-3xl border border-white/10 bg-[#111114] p-5">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-[#E8B86A]">Nueva Categoría</h3>
+            <label htmlFor="cat-name" className="mt-3 block text-[10px] font-bold uppercase tracking-wider text-white/50">
               Nombre de la categoría
             </label>
             <input
               id="cat-name"
               value={categoryName}
               onChange={(e) => setCategoryName(e.target.value)}
-              className="control-dark mt-1 w-full rounded-lg px-3 py-2 text-sm focus:border-[#E8B86A]/50 focus:outline-none"
+              className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#16161A] px-3.5 py-2.5 text-xs text-white focus:border-[#E8B86A] focus:outline-none transition-colors"
               placeholder="Ej: Panadería & Repostería"
               required
             />
             <button
               disabled={saving || !categoryName.trim()}
-              className="mt-3 w-full rounded-lg bg-white/10 py-2 text-xs font-bold text-white hover:bg-white/15 disabled:opacity-40"
+              className="mt-3 w-full rounded-xl bg-white/10 py-2.5 text-xs font-bold uppercase tracking-wider text-white hover:bg-white/15 disabled:opacity-40 transition-colors"
             >
               Crear categoría
             </button>
           </form>
 
           {/* Formulario: Crear/Editar Producto */}
-          <form onSubmit={saveItem} className="surface-card p-5 space-y-3">
-            <h2 className="text-xs font-bold tracking-[0.15em] text-white">
-              {editingItem ? "EDITAR PRODUCTO" : "NUEVO PRODUCTO"}
-            </h2>
+          <form onSubmit={saveItem} className="rounded-3xl border border-white/10 bg-[#111114] p-5 space-y-3">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-[#E8B86A]">
+              {editingItem ? "Editar Producto" : "Nuevo Producto"}
+            </h3>
 
             <div>
-              <label htmlFor="item-category" className="block text-xs text-white/60">
+              <label htmlFor="item-category" className="block text-[10px] font-bold uppercase tracking-wider text-white/50">
                 Categoría *
               </label>
               <select
                 id="item-category"
                 value={itemForm.categoriaId}
                 onChange={(e) => setItemForm({ ...itemForm, categoriaId: e.target.value })}
-                className="control-dark mt-1 w-full rounded-lg px-3 py-2 text-sm focus:border-[#E8B86A]/50 focus:outline-none"
+                className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#16161A] px-3.5 py-2.5 text-xs text-white focus:border-[#E8B86A] focus:outline-none transition-colors"
                 required
               >
                 <option value="">— Selecciona categoría —</option>
@@ -362,21 +362,21 @@ export default function AdminMenuPage() {
             </div>
 
             <div>
-              <label htmlFor="item-name" className="block text-xs text-white/60">
+              <label htmlFor="item-name" className="block text-[10px] font-bold uppercase tracking-wider text-white/50">
                 Nombre del producto *
               </label>
               <input
                 id="item-name"
                 value={itemForm.nombre}
                 onChange={(e) => setItemForm({ ...itemForm, nombre: e.target.value })}
-                className="control-dark mt-1 w-full rounded-lg px-3 py-2 text-sm focus:border-[#E8B86A]/50 focus:outline-none"
+                className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#16161A] px-3.5 py-2.5 text-xs text-white focus:border-[#E8B86A] focus:outline-none transition-colors"
                 placeholder="Ej: Sandwiche Criollo"
                 required
               />
             </div>
 
             <div>
-              <label htmlFor="item-price" className="block text-xs text-white/60">
+              <label htmlFor="item-price" className="block text-[10px] font-bold uppercase tracking-wider text-white/50">
                 Precio en COP *
               </label>
               <input
@@ -385,14 +385,14 @@ export default function AdminMenuPage() {
                 min="0"
                 value={itemForm.precio}
                 onChange={(e) => setItemForm({ ...itemForm, precio: e.target.value })}
-                className="control-dark mt-1 w-full rounded-lg px-3 py-2 text-sm focus:border-[#E8B86A]/50 focus:outline-none"
+                className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#16161A] px-3.5 py-2.5 text-xs text-white focus:border-[#E8B86A] focus:outline-none transition-colors"
                 placeholder="Ej: 23000"
                 required
               />
             </div>
 
             <div>
-              <label htmlFor="item-image" className="block text-xs text-white/60">
+              <label htmlFor="item-image" className="block text-[10px] font-bold uppercase tracking-wider text-white/50">
                 URL de Imagen (opcional)
               </label>
               <input
@@ -400,20 +400,20 @@ export default function AdminMenuPage() {
                 type="url"
                 value={itemForm.imagenUrl}
                 onChange={(e) => setItemForm({ ...itemForm, imagenUrl: e.target.value })}
-                className="control-dark mt-1 w-full rounded-lg px-3 py-2 text-sm focus:border-[#E8B86A]/50 focus:outline-none"
+                className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#16161A] px-3.5 py-2.5 text-xs text-white focus:border-[#E8B86A] focus:outline-none transition-colors"
                 placeholder="https://api.treggio.co/storage/products/..."
               />
             </div>
 
             <div>
-              <label htmlFor="item-description" className="block text-xs text-white/60">
+              <label htmlFor="item-description" className="block text-[10px] font-bold uppercase tracking-wider text-white/50">
                 Descripción (opcional)
               </label>
               <textarea
                 id="item-description"
                 value={itemForm.descripcion}
                 onChange={(e) => setItemForm({ ...itemForm, descripcion: e.target.value })}
-                className="control-dark mt-1 w-full rounded-lg px-3 py-2 text-sm focus:border-[#E8B86A]/50 focus:outline-none"
+                className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#16161A] px-3.5 py-2.5 text-xs text-white focus:border-[#E8B86A] focus:outline-none transition-colors"
                 placeholder="Ingredientes o notas de cata..."
                 rows={2}
               />
@@ -422,7 +422,7 @@ export default function AdminMenuPage() {
             <div className="pt-2 flex gap-2">
               <button
                 disabled={saving || !itemForm.nombre || !itemForm.categoriaId}
-                className="flex-1 rounded-lg bg-[#E8B86A] py-2 text-sm font-bold text-black hover:bg-[#D4A574] disabled:opacity-50"
+                className="flex-1 rounded-xl bg-[#E8B86A] py-2.5 text-xs font-bold uppercase tracking-wider text-black hover:bg-[#D4A574] transition-colors disabled:opacity-50"
               >
                 {editingItem ? "Guardar cambios" : "Crear producto"}
               </button>
@@ -433,7 +433,7 @@ export default function AdminMenuPage() {
                     setEditingItem(null);
                     setItemForm(emptyItem);
                   }}
-                  className="rounded-lg border border-white/20 px-3 py-2 text-xs font-medium text-white hover:bg-white/10"
+                  className="rounded-xl border border-white/10 px-4 py-2.5 text-xs font-bold text-white hover:bg-white/5 transition-colors"
                 >
                   Cancelar
                 </button>

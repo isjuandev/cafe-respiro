@@ -19,6 +19,7 @@ import {
   FaMapMarkerAlt,
   FaWhatsapp,
   FaGamepad,
+  FaInfoCircle,
 } from "react-icons/fa";
 
 interface Pelicula {
@@ -256,10 +257,10 @@ export default function HomePage() {
       {showAuthModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
-            className="absolute inset-0 bg-black/85 backdrop-blur-md"
+            className="absolute inset-0 bg-black/85"
             onClick={() => setShowAuthModal(false)}
           />
-          <div className="relative w-full max-w-md rounded-3xl border border-[#E8B86A]/30 bg-[#121215] p-7 text-center shadow-2xl">
+          <div className="relative w-full max-w-md rounded-3xl border border-white/15 bg-[#111114] p-7 text-center">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-[#E8B86A]/30 bg-[#E8B86A]/10 text-[#E8B86A]">
               <FaLock className="text-2xl" />
             </div>
@@ -296,13 +297,7 @@ export default function HomePage() {
       )}
 
       {/* 1. HERO CINEMATOGRÁFICO SPLIT */}
-      <section className="relative overflow-hidden border-b border-white/5 bg-gradient-to-b from-[#101015] via-[#09090c] to-[#070709] py-10 lg:py-16">
-        {/* Glow de fondo cálido */}
-        <div
-          className="pointer-events-none absolute -top-40 right-1/4 h-[500px] w-[500px] rounded-full opacity-15 blur-[120px]"
-          style={{ background: "#E8B86A" }}
-        />
-
+      <section className="relative overflow-hidden border-b border-white/5 bg-[#070709] py-10 lg:py-16">
         <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8">
           {heroFuncion && heroPelicula ? (
             <div className="grid gap-8 lg:grid-cols-12 lg:items-center">
@@ -357,7 +352,7 @@ export default function HomePage() {
                 )}
 
                 {/* Medidor de Aforo en Tiempo Real (16 Cupos) */}
-                <div className="max-w-md rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur">
+                <div className="max-w-md rounded-2xl border border-white/10 bg-[#111114] p-4">
                   <div className="flex items-center justify-between text-xs font-semibold">
                     <span className="text-white/70 flex items-center gap-1.5">
                       <FaUsers className="text-[#E8B86A]" /> Aforo de la Sala (16 sillas boutique)
@@ -394,81 +389,37 @@ export default function HomePage() {
                   </div>
                 )}
 
-                {/* Control de Reserva Expandible */}
-                {expandedReserva === heroId ? (
-                  <div className="max-w-md rounded-2xl border border-[#E8B86A]/40 bg-[#121215] p-4 shadow-2xl space-y-3">
-                    <div className="flex items-center justify-between border-b border-white/10 pb-2 text-xs">
-                      <span className="font-bold text-[#E8B86A]">
-                        SELECCIONA TUS CUPOS ({heroCuposDisponibles} disponibles de {heroCupoTotal}):
-                      </span>
-                      <span className="text-white/50">{user?.contacto}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs text-white/80">
-                        Personas (Máx. {heroCuposDisponibles} disponibles):
-                      </label>
-                      <select
-                        value={reservaCantidad[heroId] || 1}
-                        onChange={(e) =>
-                          setReservaCantidad((p) => ({
-                            ...p,
-                            [heroId]: parseInt(e.target.value, 10),
-                          }))
-                        }
-                        className="control-dark rounded-lg px-3 py-1.5 text-xs font-bold text-white"
-                      >
-                        {Array.from(
-                          { length: Math.min(10, heroCuposDisponibles) },
-                          (_, i) => i + 1
-                        ).map((num) => (
-                          <option key={num} value={num}>
-                            {num} {num === 1 ? "persona" : "personas"}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="flex gap-2 pt-1">
-                      <button
-                        onClick={() => setExpandedReserva(null)}
-                        className="flex-1 rounded-xl border border-white/10 py-2.5 text-xs font-bold text-white hover:bg-white/5"
-                      >
-                        Cancelar
-                      </button>
-                      <button
-                        onClick={() => handleReservar(heroId)}
-                        disabled={!!reservaLoading[heroId]}
-                        className="flex-1 rounded-xl bg-[#E8B86A] py-2.5 text-xs font-bold text-black hover:bg-[#D4A574] disabled:opacity-50"
-                      >
-                        {reservaLoading[heroId] ? "Confirmando..." : `Confirmar (${reservaCantidad[heroId] || 1} de ${heroCuposDisponibles})`}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap items-center gap-3">
+                {/* Botones de Acción en Hero */}
+                <div className="flex flex-wrap items-center gap-3 pt-2">
+                  {heroLleno ? (
                     <button
-                      onClick={() => handleOpenReserva(heroFuncion)}
-                      disabled={heroLleno}
-                      className="inline-flex items-center gap-2.5 rounded-2xl bg-[#E8B86A] px-7 py-3.5 text-xs sm:text-sm font-black tracking-wider text-black uppercase transition-all duration-200 hover:bg-[#D4A574] hover:shadow-lg hover:shadow-[#E8B86A]/20 disabled:bg-white/10 disabled:text-white/30"
+                      disabled
+                      className="inline-flex items-center gap-2.5 rounded-2xl bg-white/10 px-7 py-3.5 text-xs sm:text-sm font-black tracking-wider text-white/30 uppercase cursor-not-allowed"
                     >
-                      {heroLleno ? "SALA COMPLETA (0/16)" : `RESERVAR CUPO (${heroCuposDisponibles} DE ${heroCupoTotal} DISPONIBLES)`}
-                      <FaArrowRight className="text-xs" />
+                      SALA COMPLETA (0/16)
                     </button>
-
+                  ) : (
                     <Link
-                      href="/menu"
-                      className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-5 py-3.5 text-xs sm:text-sm font-bold text-white hover:bg-white/10 hover:border-white/30 transition-colors"
+                      href={`/reservar/${heroFuncion.id}/entradas`}
+                      className="inline-flex items-center gap-2.5 rounded-2xl bg-[#E8B86A] px-7 py-3.5 text-xs sm:text-sm font-black tracking-wider text-black uppercase transition-colors hover:bg-[#D4A574]"
                     >
-                      <FaCoffee className="text-[#E8B86A]" /> Ver Menú & Restaurante
+                      RESERVAR ENTRADAS ({heroCuposDisponibles} DE {heroCupoTotal} DISPONIBLES)
+                      <FaArrowRight className="text-xs" />
                     </Link>
-                  </div>
-                )}
+                  )}
+
+                  <Link
+                    href="/menu"
+                    className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-5 py-3.5 text-xs sm:text-sm font-bold text-white hover:bg-white/10 hover:border-white/30 transition-colors"
+                  >
+                    <FaCoffee className="text-[#E8B86A]" /> Ver Menú & Restaurante
+                  </Link>
+                </div>
               </div>
 
               {/* Columna Derecha: Póster Cinemático Nítido */}
-              <div className="lg:col-span-5 flex flex-col items-center">
-                <div className="relative group w-full max-w-[320px] sm:max-w-[340px] rounded-3xl overflow-hidden border border-[#E8B86A]/30 shadow-2xl glow-gold bg-black">
+              <div className="lg:col-span-5 flex flex-col items-center justify-center">
+                <div className="relative group w-full max-w-[320px] sm:max-w-[340px] rounded-3xl overflow-hidden border border-white/10 bg-[#111114]">
                   <div className="aspect-[2/3] w-full relative">
                     <img
                       src={heroPoster}
@@ -479,10 +430,10 @@ export default function HomePage() {
                           "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=600&h=900&fit=crop";
                       }}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
 
                     <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
-                      <span className="rounded-full bg-black/80 px-3 py-1 text-[11px] font-bold text-white backdrop-blur border border-white/10">
+                      <span className="rounded-full bg-black/90 px-3 py-1 text-[11px] font-bold text-white border border-white/10">
                         🎟️ Sala Boutique · 16 Sillas
                       </span>
                       <span className="rounded-full bg-[#E8B86A] px-2.5 py-1 text-[11px] font-bold text-black">
@@ -558,24 +509,24 @@ export default function HomePage() {
               return (
                 <div
                   key={fid}
-                  className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#121215] transition-all duration-300 hover:border-[#E8B86A]/40 hover:shadow-2xl hover:shadow-[#E8B86A]/10"
+                  className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#111114] transition-colors duration-200 hover:border-white/20"
                 >
                   {/* Póster Vertical Cinemático */}
                   <div className="relative aspect-[2/3] w-full overflow-hidden bg-black">
                     <img
                       src={poster}
                       alt={p.titulo}
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                       onError={(e) => {
                         (e.target as HTMLImageElement).src =
                           "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&h=750&fit=crop";
                       }}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#121215] via-transparent to-black/40" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#111114] via-transparent to-black/40" />
 
                     {/* Badge de fecha arriba */}
                     <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
-                      <span className="rounded-lg bg-black/80 px-2.5 py-1 text-[10px] font-black text-white backdrop-blur border border-white/10">
+                      <span className="rounded-lg bg-black/90 px-2.5 py-1 text-[10px] font-black text-white border border-white/10">
                         {dateObj.badge}
                       </span>
                       <span className="rounded-lg bg-[#E8B86A] px-2 py-0.5 text-[10px] font-black text-black">
@@ -585,7 +536,7 @@ export default function HomePage() {
 
                     {/* Badge de aforo sobre el poster */}
                     <div className="absolute bottom-3 left-3 right-3">
-                      <div className="flex items-center justify-between text-[10px] font-bold rounded-lg bg-black/75 px-2.5 py-1 backdrop-blur border border-white/10">
+                      <div className="flex items-center justify-between text-[10px] font-bold rounded-lg bg-black/90 px-2.5 py-1 border border-white/10">
                         <span className="flex items-center gap-1 text-white/80">
                           <FaUsers className="text-[#E8B86A]" /> Aforo
                         </span>
@@ -615,73 +566,22 @@ export default function HomePage() {
                       )}
                     </div>
 
-                    {/* Selector de reserva / Feedback */}
+                    {/* Botón de Reserva Directa al Wizard */}
                     <div className="pt-2 border-t border-white/5">
-                      {reservaSuccess[fid] && (
-                        <div className="mb-2 rounded-lg bg-green-500/10 p-2 text-[11px] text-green-300">
-                          {reservaSuccess[fid]}
-                        </div>
-                      )}
-                      {reservaError[fid] && (
-                        <div className="mb-2 rounded-lg bg-red-500/10 p-2 text-[11px] text-red-300">
-                          {reservaError[fid]}
-                        </div>
-                      )}
-
-                      {expandedReserva === fid ? (
-                        <div className="space-y-2 rounded-xl border border-[#E8B86A]/30 bg-black/60 p-2.5">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-white/70">
-                              Cupos ({f.cuposDisponibles} disp. de {f.cupoTotal ?? 16}):
-                            </span>
-                            <select
-                              value={reservaCantidad[fid] || 1}
-                              onChange={(e) =>
-                                setReservaCantidad((prev) => ({
-                                  ...prev,
-                                  [fid]: parseInt(e.target.value, 10),
-                                }))
-                              }
-                              className="control-dark rounded px-2 py-1 text-xs"
-                            >
-                              {Array.from(
-                                { length: Math.min(10, f.cuposDisponibles) },
-                                (_, i) => i + 1
-                              ).map((num) => (
-                                <option key={num} value={num}>
-                                  {num} {num === 1 ? "cupo" : "cupos"}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          <div className="flex gap-1.5">
-                            <button
-                              onClick={() => setExpandedReserva(null)}
-                              className="flex-1 rounded-lg border border-white/10 py-1 text-[11px] font-bold text-white hover:bg-white/5"
-                            >
-                              Cancelar
-                            </button>
-                            <button
-                              onClick={() => handleReservar(fid)}
-                              disabled={!!reservaLoading[fid]}
-                              className="flex-1 rounded-lg bg-[#E8B86A] py-1 text-[11px] font-bold text-black hover:bg-[#D4A574] disabled:opacity-50"
-                            >
-                              {reservaLoading[fid] ? "..." : `Confirmar (${reservaCantidad[fid] || 1})`}
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
+                      {lleno ? (
                         <button
-                          onClick={() => handleOpenReserva(f)}
-                          disabled={lleno}
-                          className={`w-full rounded-xl py-2 text-xs font-bold tracking-wide uppercase transition-colors ${
-                            lleno
-                              ? "bg-white/5 text-white/30 cursor-not-allowed border border-white/5"
-                              : "bg-[#E8B86A]/10 border border-[#E8B86A]/30 text-[#E8B86A] hover:bg-[#E8B86A] hover:text-black"
-                          }`}
+                          disabled
+                          className="w-full rounded-xl py-2.5 text-xs font-bold tracking-wide uppercase bg-white/5 text-white/30 cursor-not-allowed border border-white/5"
                         >
-                          {lleno ? "Sala Llena (0/16)" : `Reservar (${f.cuposDisponibles} de ${f.cupoTotal ?? 16} disp.)`}
+                          Sala Llena (0/16)
                         </button>
+                      ) : (
+                        <Link
+                          href={`/reservar/${fid}/entradas`}
+                          className="block w-full text-center rounded-xl py-2.5 text-xs font-bold tracking-wide uppercase bg-[#E8B86A]/10 border border-[#E8B86A]/30 text-[#E8B86A] hover:bg-[#E8B86A] hover:text-black transition-all"
+                        >
+                          Reservar Entradas ({f.cuposDisponibles} disp.)
+                        </Link>
                       )}
                     </div>
                   </div>
@@ -698,7 +598,7 @@ export default function HomePage() {
 
       {/* 3. CINECLUB & VOTACIONES COMUNITARIAS */}
       <section className="mx-auto max-w-[1280px] px-4 py-8 sm:px-6 lg:px-8">
-        <div className="relative overflow-hidden rounded-3xl border border-[#E8B86A]/20 bg-gradient-to-r from-[#181512] via-[#121115] to-[#0d0d12] p-6 sm:p-10 shadow-2xl">
+        <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#111114] p-6 sm:p-10">
           <div className="grid gap-8 lg:grid-cols-12 lg:items-center">
             <div className="lg:col-span-7 space-y-4">
               <div className="inline-flex items-center gap-2 rounded-full bg-[#E8B86A]/10 border border-[#E8B86A]/30 px-3 py-1 text-[11px] font-bold text-[#E8B86A]">
@@ -732,7 +632,7 @@ export default function HomePage() {
             {/* Tarjetas de previsualización de votaciones */}
             <div className="lg:col-span-5">
               {votacion?.sugerencias && votacion.sugerencias.length > 0 ? (
-                <div className="space-y-2.5 rounded-2xl border border-white/10 bg-black/40 p-4 backdrop-blur">
+                <div className="space-y-2.5 rounded-2xl border border-white/10 bg-[#16161A] p-4">
                   <div className="flex items-center justify-between text-[11px] font-bold text-white/60 border-b border-white/10 pb-2">
                     <span>En votación ahora</span>
                     <span className="text-[#E8B86A]">Votos acumulados</span>

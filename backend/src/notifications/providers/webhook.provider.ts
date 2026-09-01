@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
   NotificationProvider,
+  PagoConfirmadoPayload,
   ReservaConfirmadaPayload,
+  ReservaRegistradaPayload,
   SugerenciaProgramadaPayload,
 } from './notification.provider';
 
@@ -17,6 +19,16 @@ export class WebhookNotificationProvider implements NotificationProvider {
   async sendSugerenciaProgramada(payload: SugerenciaProgramadaPayload): Promise<void> {
     if (!this.webhookUrl) return;
     await this.postWebhook('SUGERENCIA_PROGRAMADA', payload);
+  }
+
+  async sendReservaRegistrada(payload: ReservaRegistradaPayload): Promise<void> {
+    if (!this.webhookUrl) return;
+    await this.postWebhook('RESERVA_REGISTRADA', payload);
+  }
+
+  async sendPagoConfirmado(payload: PagoConfirmadoPayload): Promise<void> {
+    if (!this.webhookUrl) return;
+    await this.postWebhook('PAGO_CONFIRMADO', payload);
   }
 
   async sendReservaConfirmada(payload: ReservaConfirmadaPayload): Promise<void> {

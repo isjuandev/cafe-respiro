@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
   NotificationProvider,
+  PagoConfirmadoPayload,
   ReservaConfirmadaPayload,
+  ReservaRegistradaPayload,
   SugerenciaProgramadaPayload,
 } from './notification.provider';
 
@@ -18,7 +20,8 @@ export class ResendNotificationProvider implements NotificationProvider {
     return process.env.EMAIL_FROM || 'Café Respiro <hola@caferespiro.com>';
   }
 
-  private isValidEmail(target: string): boolean {
+  private isValidEmail(target?: string | null): boolean {
+    if (!target) return false;
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(target);
   }
 
@@ -40,6 +43,94 @@ export class ResendNotificationProvider implements NotificationProvider {
     `;
 
     await this.sendEmail(payload.contacto, `¡Tu sugerencia "${payload.titulo}" fue programada! — Café Respiro`, html);
+  }
+
+  async sendReservaRegistrada(payload: ReservaRegistradaPayload): Promise<void> {
+    const targetEmail = this.isValidEmail(payload.email)
+      ? payload.email!
+      : this.isValidEmail(payload.contacto)
+      ? payload.contacto
+      : null;
+
+    if (!this.apiKey || !targetEmail) {
+      return;
+    }
+
+    const fechaStr = new Date(payload.fechaHora).toLocaleString('es-CO', {
+      dateStyle: 'full',
+      timeStyle: 'short',
+      timeZone: 'America/Bogota',
+    });
+
+    const totalStr = new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      maximumFractionDigits: 0,
+    }).format(payload.total);
+
+    const html = `
+      <div style="font-family: sans-serif; background: #050507; color: #ffffff; padding: 24px; border-radius: 12px; max-width: 600px; margin: auto;">
+        <h1 style="color: #E8B86A; margin: 0 0 8px 0; font-size: 24px;">Reserva Registrada (Pendiente de Pago)</h1>
+        <p style="color: #dddddd; line-height: 1.6; font-size: 15px;">
+          Hemos recibido tu solicitud de reserva para <strong style="color: #ffffff;">${payload.pelicula}</strong>.
+        </p>
+        <div style="background: #141414; padding: 16px; border-radius: 8px; margin: 20px 0; border: 1px solid #333333;">
+          <p style="margin: 4px 0; color: #aaaaaa; font-size: 13px;">CÓDIGO DE RESERVA:</p>
+          <p style="margin: 0 0 12px 0; font-weight: bold; font-size: 20px; color: #E8B86A;">${payload.codigo}</p>
+          <p style="margin: 4px 0; color: #aaaaaa; font-size: 13px;">FECHA Y HORA:</p>
+          <p style="margin: 0 0 12px 0; font-weight: bold; color: #ffffff;">${fechaStr}</p>
+          <p style="margin: 4px 0; color: #aaaaaa; font-size: 13px;">ENTRADAS:</p>
+          <p style="margin: 0 0 12px 0; font-weight: bold; color: #ffffff;">${payload.cantidad} persona(s)</p>
+          <p style="margin: 4px 0; color: #aaaaaa; font-size: 13px;">TOTAL A TRANSFERIR:</p>
+          <p style="margin: 0; font-weight: bold; font-size: 18px; color: #E8B86A;">${totalStr}</p>
+        </div>
+        <p style="color: #dddddd; font-size: 14px;">
+          Por favor envía el comprobante de pago por WhatsApp indicando tu código <strong>${payload.codigo}</strong> antes de que expire tu reserva.
+        </p>
+      </div>
+    `;
+
+    await this.sendEmail(targetEmail, `Reserva registrada: ${payload.codigo} (${payload.pelicula}) — Café Respiro`, html);
+  }
+
+  async sendPagoConfirmado(payload: PagoConfirmadoPayload): Promise<void> {
+    const targetEmail = this.isValidEmail(payload.email)
+      ? payload.email!
+      : this.isValidEmail(payload.contacto)
+      ? payload.contacto
+      : null;
+
+    if (!this.apiKey || !targetEmail) {
+      return;
+    }
+
+    const fechaStr = new Date(payload.fechaHora).toLocaleString('es-CO', {
+      dateStyle: 'full',
+      timeStyle: 'short',
+      timeZone: 'America/Bogota',
+    });
+
+    const html = `
+      <div style="font-family: sans-serif; background: #050507; color: #ffffff; padding: 24px; border-radius: 12px; max-width: 600px; margin: auto;">
+        <h1 style="color: #4ade80; margin: 0 0 8px 0; font-size: 24px;">¡Pago y Entradas Confirmadas! 🎉</h1>
+        <p style="color: #dddddd; line-height: 1.6; font-size: 15px;">
+          Tu pago ha sido validado exitosamente. Tus entradas para <strong style="color: #ffffff;">${payload.pelicula}</strong> en <strong>Café Respiro</strong> están listas.
+        </p>
+        <div style="background: #141414; padding: 16px; border-radius: 8px; margin: 20px 0; border: 1px solid #333333;">
+          <p style="margin: 4px 0; color: #aaaaaa; font-size: 13px;">CÓDIGO DE RESERVA:</p>
+          <p style="margin: 0 0 12px 0; font-weight: bold; font-size: 20px; color: #E8B86A;">${payload.codigo}</p>
+          <p style="margin: 4px 0; color: #aaaaaa; font-size: 13px;">FECHA Y HORA:</p>
+          <p style="margin: 0 0 12px 0; font-weight: bold; color: #ffffff;">${fechaStr}</p>
+          <p style="margin: 4px 0; color: #aaaaaa; font-size: 13px;">ENTRADAS CONFIRMADAS:</p>
+          <p style="margin: 0; font-weight: bold; color: #4ade80;">${payload.cantidad} persona(s)</p>
+        </div>
+        <p style="color: #999999; font-size: 13px; margin-top: 24px;">
+          Presenta tu código de reserva al ingresar. ¡Te esperamos para una gran noche de cine y café!
+        </p>
+      </div>
+    `;
+
+    await this.sendEmail(targetEmail, `¡Entradas confirmadas! ${payload.codigo} (${payload.pelicula}) — Café Respiro`, html);
   }
 
   async sendReservaConfirmada(payload: ReservaConfirmadaPayload): Promise<void> {
@@ -65,9 +156,6 @@ export class ResendNotificationProvider implements NotificationProvider {
           <p style="margin: 4px 0; color: #aaaaaa; font-size: 13px;">CUPOS:</p>
           <p style="margin: 0; font-weight: bold; color: #E8B86A;">${payload.cantidad} persona(s)</p>
         </div>
-        <p style="color: #999999; font-size: 13px; margin-top: 24px;">
-          Recuerda llegar unos minutos antes. ¡Tendremos café y comida de 3:00 PM a 7:00 PM!
-        </p>
       </div>
     `;
 

@@ -57,7 +57,7 @@ export default function RegistroPage() {
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-64px)] items-center justify-center bg-[#050507] px-4 py-12 text-white">
+    <div className="flex min-h-[calc(100vh-64px)] items-center justify-center bg-[#070709] px-4 py-12 text-white">
       <section
         className="surface-card w-full max-w-md p-6 sm:p-8 border border-white/10"
         aria-labelledby="registro-title"

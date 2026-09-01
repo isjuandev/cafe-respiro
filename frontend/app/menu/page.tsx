@@ -107,7 +107,7 @@ export default function MenuPage() {
       />
 
       {/* Franja de Características Boutique */}
-      <div className="border-y border-white/[0.07] bg-black/40 backdrop-blur-sm py-4">
+      <div className="border-y border-white/10 bg-[#0d0d10] py-4">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
             <div className="flex items-center justify-center gap-2">
@@ -132,15 +132,15 @@ export default function MenuPage() {
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {/* Barra de Filtros y Buscador */}
-        <div className="sticky top-16 z-20 -mx-4 px-4 sm:mx-0 sm:px-0 py-3 bg-[#070709]/90 backdrop-blur-md">
-          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#101014]/95 p-2 shadow-2xl">
+        <div className="sticky top-16 z-20 -mx-4 px-4 sm:mx-0 sm:px-0 py-3 bg-[#070709]">
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#111114] p-2">
             {/* Pestañas de Categoría con flex-wrap para evitar scroll lateral */}
             <div className="flex flex-wrap items-center gap-1.5 p-1">
               <button
                 onClick={() => setActiveCategory("all")}
-                className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
+                className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition-colors ${
                   activeCategory === "all"
-                    ? "bg-[#E8B86A] text-black shadow-lg shadow-[#E8B86A]/20"
+                    ? "bg-[#E8B86A] text-black"
                     : "text-white/70 hover:text-white hover:bg-white/5"
                 }`}
               >
@@ -297,7 +297,7 @@ export default function MenuPage() {
 
                             {/* Badge de Precio */}
                             <div className="absolute top-3 right-3">
-                              <span className="rounded-full bg-black/85 backdrop-blur-md px-3 py-1 text-xs font-black text-[#E8B86A] border border-[#E8B86A]/30 shadow-lg">
+                              <span className="rounded-full bg-black/90 px-3 py-1 text-xs font-black text-[#E8B86A] border border-[#E8B86A]/30">
                                 {moneyFormatter.format(item.precio)}
                               </span>
                             </div>

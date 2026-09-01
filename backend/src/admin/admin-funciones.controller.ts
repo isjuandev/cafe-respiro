@@ -1,10 +1,11 @@
-import { Controller, Post, Get, Param, Body, UseGuards, NotFoundException, ConflictException, Logger } from '@nestjs/common';
+import { Controller, Post, Get, Param, Body, UseGuards, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthGuard } from '../common/guards/auth.guard';
 import { RequireRole } from '../common/decorators/require-role.decorator';
 import { CreateFuncionDto } from './dto/create-funcion.dto';
 import { SugerenciasService } from '../sugerencias/sugerencias.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { getEstadoEfectivo, getFiltroCuposOcupados } from '../reservas/reservas.utils';
 
 @UseGuards(AuthGuard)
 @RequireRole('admin')
@@ -17,28 +18,61 @@ export class AdminFuncionesController {
     private notifications: NotificationsService,
   ) {}
 
-  // LEGACY endpoint: delega a la operación de dominio única SugerenciasService.programar
-  // Mantiene compatibilidad con clientes que POST /admin/funciones {sugerenciaId, fechaHora, cupoTotal}
-  // Ahora es transaccional y atómico (no deja estados intermedios).
   @Post()
   async create(@Body() dto: CreateFuncionDto) {
     const result = await this.sugerenciasService.programar(dto.sugerenciaId, { fechaHora: dto.fechaHora, cupoTotal: dto.cupoTotal }, { manual: false });
-    // Notificación solo después de commit
-    this.notifications.notifySugerenciaProgramada(result.sugerencia).catch((e) => this.logger.warn(`notifySugerenciaProgramada (legacy) falló: ${e}`));
+    this.notifications.notifySugerenciaProgramada(result.sugerencia).catch((e) => this.logger.warn(`notifySugerenciaProgramada falló: ${e}`));
     return { funcion: result.funcion, pelicula: result.pelicula, sugerencia: result.sugerencia };
   }
 
   @Get(':id/reservas')
   async reservas(@Param('id') id: string) {
+    const ahora = new Date();
     const funcion = await this.prisma.funcion.findUnique({
       where: { id },
       include: {
         pelicula: true,
-        reservas: { orderBy: { createdAt: 'asc' } },
+        reservas: {
+          include: {
+            items: { include: { tipoEntrada: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
       },
     });
+
     if (!funcion) throw new NotFoundException('Función no encontrada');
-    const ocupados = funcion.reservas.reduce((s, r) => s + r.cantidad, 0);
+
+    const filtro = getFiltroCuposOcupados(ahora);
+    // Calcular cupos ocupados considerando solo reservas activas
+    const reservasOcupantes = funcion.reservas.filter((r) => {
+      const estadoEfectivo = getEstadoEfectivo(r, ahora);
+      return estadoEfectivo === 'CONFIRMADA' || estadoEfectivo === 'PENDIENTE_PAGO';
+    });
+    const ocupados = reservasOcupantes.reduce((s, r) => s + r.cantidad, 0);
+
+    const reservasConEstado = funcion.reservas.map((r) => ({
+      id: r.id,
+      codigo: r.codigo,
+      nombre: r.nombre,
+      contacto: r.contacto,
+      email: r.email,
+      cantidad: r.cantidad,
+      total: r.total,
+      estado: r.estado,
+      estadoEfectivo: getEstadoEfectivo(r, ahora),
+      expiraEn: r.expiraEn,
+      confirmadoEn: r.confirmadoEn,
+      confirmadoPorAdminId: r.confirmadoPorAdminId,
+      createdAt: r.createdAt,
+      items: r.items.map((i) => ({
+        tipoEntrada: i.tipoEntrada.nombre,
+        cantidad: i.cantidad,
+        precioUnitario: i.precioUnitario,
+        subtotal: i.subtotal,
+      })),
+    }));
+
     return {
       funcion: {
         id: funcion.id,
@@ -46,10 +80,10 @@ export class AdminFuncionesController {
         fechaHora: funcion.fechaHora,
         cupoTotal: funcion.cupoTotal,
         cuposOcupados: ocupados,
-        cuposDisponibles: funcion.cupoTotal - ocupados,
+        cuposDisponibles: Math.max(0, funcion.cupoTotal - ocupados),
       },
-      reservas: funcion.reservas,
-      totalReservas: funcion.reservas.length,
+      reservas: reservasConEstado,
+      totalReservas: reservasConEstado.length,
     };
   }
 }
