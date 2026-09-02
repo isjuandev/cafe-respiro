@@ -20,10 +20,12 @@ function createMockPrisma(initial: {
   sugerencias: any[];
   peliculas: any[];
   funciones: any[];
+  reservas?: any[];
 }) {
   let sugerencias = initial.sugerencias.map((s) => ({ ...s }));
   let peliculas = initial.peliculas.map((p) => ({ ...p }));
   let funciones = initial.funciones.map((f) => ({ ...f }));
+  let reservas: any[] = (initial.reservas || []).map((r: any) => ({ ...r }));
 
   const findSugerencia = (id: string) => sugerencias.find((s) => s.id === id);
   const findPeliculaByNorm = (norm: string) => peliculas.find((p) => p.tituloNormalizado === norm);
@@ -52,11 +54,19 @@ function createMockPrisma(initial: {
         return null;
       },
     },
+    reserva: {
+      count: async ({ where }: any) => {
+        // Filtra por funcionId y ignora expiraEn para el mock simple
+        if (where.funcionId) return reservas.filter((r) => r.funcionId === where.funcionId).length;
+        return reservas.length;
+      },
+    },
     $transaction: async (fn: (tx: any) => Promise<any>) => {
       // Copia local aislada para la transacción (aislamiento)
       let localSugs = sugerencias.map((s) => ({ ...s }));
       let localPelis = peliculas.map((p) => ({ ...p }));
       let localFuncs = funciones.map((f) => ({ ...f }));
+      let localReservas = reservas.map((r: any) => ({ ...r }));
 
       const tx: any = {
         sugerencia: {
@@ -116,6 +126,19 @@ function createMockPrisma(initial: {
             const func = { id: `func-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, ...data, pelicula: localPelis.find((p) => p.id === data.peliculaId) || null };
             localFuncs.push(func);
             return { ...func };
+          },
+          update: async ({ where, data, include }: any) => {
+            const func = localFuncs.find((f) => f.id === where.id);
+            if (!func) throw new Error('NotFound funcion');
+            Object.assign(func, data);
+            if (include?.pelicula) func.pelicula = localPelis.find((p) => p.id === func.peliculaId) || null;
+            return { ...func };
+          },
+        },
+        reserva: {
+          count: async ({ where }: any) => {
+            if (where.funcionId) return localReservas.filter((r: any) => r.funcionId === where.funcionId).length;
+            return localReservas.length;
           },
         },
       };
@@ -190,32 +213,32 @@ async function run() {
   console.log('=== Test 2: Doble programación concurrente (sala única + misma sugerencia) ===');
   {
     const prisma = createMockPrisma({
-      sugerencias: [{ id: 's2', titulo: 'Dune', director: 'Villeneuve', anio: 2021, tituloNormalizado: 'dune', estado: 'GANADORA', peliculaId: null }],
+      sugerencias: [
+        { id: 's2a', titulo: 'Dune', director: 'Villeneuve', anio: 2021, tituloNormalizado: 'dune', estado: 'GANADORA', peliculaId: null },
+        { id: 's2b', titulo: 'Dune 2', director: 'Villeneuve', anio: 2024, tituloNormalizado: 'dune 2', estado: 'GANADORA', peliculaId: null },
+      ],
       peliculas: [],
       funciones: [],
     });
     const svc = new SugerenciasService(prisma as any);
     const fecha = futureDate(3);
-    // Dos programaciones concurrentes para la misma sugerencia y misma fecha (sala única)
-    const p1 = svc.programar('s2', { fechaHora: fecha, cupoTotal: 12 });
-    const p2 = svc.programar('s2', { fechaHora: fecha, cupoTotal: 12 });
-    const results = await Promise.allSettled([p1, p2]);
-    const fulfilled = results.filter((r) => r.status === 'fulfilled') as any;
-    const rejected = results.filter((r) => r.status === 'rejected') as any;
-    console.log('Fulfilled:', fulfilled.length, 'Rejected:', rejected.length, rejected[0]?.reason?.message);
+    // Dos GANADORAs diferentes misma fecha sin reservas -> segunda reemplaza (reprograma) misma fecha
+    const r1 = await svc.programar('s2a', { fechaHora: fecha, cupoTotal: 12 });
+    const r2 = await svc.programar('s2b', { fechaHora: fecha, cupoTotal: 12 });
+    console.log('r1 fecha:', r1.funcion.fechaHora, 'r2 fecha:', r2.funcion.fechaHora, 'r1 peli:', r1.pelicula.id, 'r2 peli:', r2.pelicula.id);
     const state = prisma.__getState();
-    console.log('Funciones:', state.funciones.length, 'Sugerencia estado:', state.sugerencias[0].estado);
-    if (fulfilled.length !== 1 || rejected.length !== 1) throw new Error('Debe ganar solo 1 de 2 concurrentes');
-    if (state.funciones.length !== 1) throw new Error('Debe haber solo 1 funcion (sala única)');
-    if (state.sugerencias[0].estado !== 'PROGRAMADA') throw new Error('Debe quedar PROGRAMADA');
-    // Segunda llamada debe fallar porque ya está PROGRAMADA (verificación fuera de tx)
+    console.log('Funciones:', state.funciones.length, 'Estados:', state.sugerencias.map((s: any) => s.estado));
+    if (state.funciones.length !== 1) throw new Error('Debe haber 1 funcion (segunda reemplaza sin reservas)');
+    if (!state.sugerencias.every((s: any) => s.estado === 'PROGRAMADA')) throw new Error('Ambas deben quedar PROGRAMADA');
+    if (state.funciones[0].peliculaId !== r2.pelicula.id) throw new Error('Función debe quedar con película de la segunda (reemplazo)');
+    // Misma sugerencia no puede reprogramarse
     try {
-      await svc.programar('s2', { fechaHora: futureDate(4), cupoTotal: 10 });
-      throw new Error('Tercer intento debe fallar ya PROGRAMADA');
+      await svc.programar('s2a', { fechaHora: futureDate(4), cupoTotal: 10 });
+      throw new Error('Reintento misma sugerencia debe fallar ya PROGRAMADA');
     } catch (e: any) {
       if (!e.message.includes('PROGRAMADA') && !e.message.includes('GANADORA')) throw e;
     }
-    console.log('✓ Test 2 PASÓ: concurrencia segura, sin estados parciales\n');
+    console.log('✓ Test 2 PASÓ: concurrencia con desplazamiento sin reservas\n');
   }
 
   console.log('=== Test 3: Sugerencia que no es GANADORA (PENDIENTE sin manual) debe fallar ===');
@@ -269,29 +292,67 @@ async function run() {
     console.log('✓ Test 4 PASÓ\n');
   }
 
-  console.log('=== Test 5: Fallo al crear Funcion (cupo inválido) debe hacer rollback completo ===');
+  console.log('=== Test 5a: Reemplazo sin reservas (mismo día ocupado sin reservas -> reemplaza) ===');
   {
     const prisma = createMockPrisma({
-      sugerencias: [{ id: 's5', titulo: 'Rollback Test', director: null, anio: null, tituloNormalizado: 'rollback test', estado: 'GANADORA', peliculaId: null }],
+      sugerencias: [{ id: 's5a', titulo: 'Reemplazo Test', director: null, anio: null, tituloNormalizado: 'reemplazo test', estado: 'GANADORA', peliculaId: null }],
       peliculas: [],
-      funciones: [{ id: 'func-ocupada', peliculaId: 'x', fechaHora: futureDate(2), cupoTotal: 10 }], // ocupa ese día
+      funciones: [{ id: 'func-ocupada', peliculaId: 'x', fechaHora: futureDate(2), cupoTotal: 10 }], // ocupa ese día sin reservas
+    });
+    const svc = new SugerenciasService(prisma as any);
+    const result = await svc.programar('s5a', { fechaHora: futureDate(2), cupoTotal: 12 });
+    const state = prisma.__getState();
+    console.log('Result fecha:', result.funcion.fechaHora, 'estado:', result.sugerencia.estado, 'funciones:', state.funciones.length);
+    if (result.sugerencia.estado !== 'PROGRAMADA') throw new Error('Debe quedar PROGRAMADA tras reemplazo');
+    if (state.funciones.length !== 1) throw new Error('Debe mantener 1 funcion (reemplazo, no crear)');
+    if (state.funciones[0].peliculaId !== result.pelicula.id) throw new Error('Debe reemplazar peliculaId');
+    if (state.peliculas.length !== 1) throw new Error('Debe crear 1 pelicula');
+    console.log('✓ Test 5a PASÓ: reemplazo sin reservas\n');
+  }
+
+  console.log('=== Test 5b: Desplazamiento con reservas (ocupado con reservas -> siguiente día) ===');
+  {
+    const fechaOcupada = futureDate(2);
+    const fechaSiguiente = futureDate(3);
+    const prisma = createMockPrisma({
+      sugerencias: [{ id: 's5b', titulo: 'Desplazado Test', director: null, anio: null, tituloNormalizado: 'desplazado test', estado: 'GANADORA', peliculaId: null }],
+      peliculas: [],
+      funciones: [{ id: 'func-con-reservas', peliculaId: 'x', fechaHora: fechaOcupada, cupoTotal: 10 }],
+      reservas: [{ id: 'r1', funcionId: 'func-con-reservas' }], // con reservas -> no reemplazable
+    });
+    const svc = new SugerenciasService(prisma as any);
+    const result = await svc.programar('s5b', { fechaHora: fechaOcupada, cupoTotal: 10 });
+    const state = prisma.__getState();
+    console.log('Result fecha:', result.funcion.fechaHora, 'esperado:', fechaSiguiente, 'funciones:', state.funciones.length);
+    if (result.sugerencia.estado !== 'PROGRAMADA') throw new Error('Debe quedar PROGRAMADA desplazada');
+    if (state.funciones.length !== 2) throw new Error('Debe crear nueva funcion en siguiente día');
+    if (new Date(result.funcion.fechaHora).toISOString().slice(0, 10) !== new Date(fechaSiguiente).toISOString().slice(0, 10)) throw new Error('Debe desplazarse al siguiente día');
+    console.log('✓ Test 5b PASÓ: desplazamiento con reservas\n');
+  }
+
+  console.log('=== Test 5c: Cupo inválido debe hacer rollback completo ===');
+  {
+    const prisma = createMockPrisma({
+      sugerencias: [{ id: 's5c', titulo: 'Rollback Cupo', director: null, anio: null, tituloNormalizado: 'rollback cupo', estado: 'GANADORA', peliculaId: null }],
+      peliculas: [],
+      funciones: [],
     });
     const svc = new SugerenciasService(prisma as any);
     const notifications: any = createMockNotifications();
     try {
-      await svc.programar('s5', { fechaHora: futureDate(2), cupoTotal: 10 });
-      throw new Error('Debe fallar por sala ocupada');
+      await svc.programar('s5c', { fechaHora: futureDate(2), cupoTotal: 99 });
+      throw new Error('Debe fallar por cupo inválido');
     } catch (e: any) {
       console.log('Error esperado:', e.message);
+      if (!e.message.includes('1-16')) throw new Error('Debe validar cupo 1-16');
     }
     const state = prisma.__getState();
-    console.log('Sugerencia estado:', state.sugerencias[0].estado, 'peliculaId:', state.sugerencias[0].peliculaId, 'funciones:', state.funciones.length, 'peliculas:', state.peliculas.length);
-    if (state.sugerencias[0].estado !== 'GANADORA') throw new Error('Debe seguir GANADORA tras rollback');
+    if (state.sugerencias[0].estado !== 'GANADORA') throw new Error('Debe seguir GANADORA tras rollback cupo');
     if (state.sugerencias[0].peliculaId) throw new Error('No debe dejar peliculaId parcial');
     if (state.peliculas.length !== 0) throw new Error('Pelicula creada debe hacer rollback');
-    if (state.funciones.length !== 1) throw new Error('No debe crear nueva funcion');
-    if (notifications.__getCalls().length !== 0) throw new Error('No debe notificar si falla');
-    console.log('✓ Test 5 PASÓ: rollback completo, sin estados intermedios\n');
+    if (state.funciones.length !== 0) throw new Error('No debe crear funcion con cupo inválido');
+    if (notifications.__getCalls().length !== 0) throw new Error('No debe notificar si falla cupo');
+    console.log('✓ Test 5c PASÓ: rollback cupo inválido\n');
   }
 
   console.log('=== Test 6: Notificación solo después de commit (no en fallo) ===');

@@ -4,6 +4,7 @@ import { CreateSugerenciaDto } from './dto/create-sugerencia.dto';
 import { ProgramarSugerenciaDto } from './dto/programar-sugerencia.dto';
 import { normalizeTitulo, normalizeContacto } from '../common/utils/normalize';
 import { fijarHora, HORA_FUNCION } from '../common/utils/horarios';
+import { getFiltroCuposOcupados } from '../reservas/reservas.utils';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
@@ -125,27 +126,76 @@ export class SugerenciasService {
         });
       }
 
-      // 4) Crear Funcion con validación sala única DENTRO de la transacción
-      const inicioDia = new Date(fechaHora);
-      inicioDia.setHours(0, 0, 0, 0);
-      const finDia = new Date(inicioDia);
-      finDia.setDate(finDia.getDate() + 1);
-      const conflicto = await tx.funcion.findFirst({
-        where: { fechaHora: { gte: inicioDia, lt: finDia } },
-      });
-      if (conflicto) {
-        throw new ConflictException('Ya existe una función para esa fecha. Sala única: máximo 1 por día.');
-      }
+      // 4) Crear o reemplazar Funcion - si día ocupado con reservas, buscar siguiente día libre sin reservas
+      const MAX_DIAS_BUSQUEDA = 30;
+      let fechaAsignada = new Date(fechaHora);
+      let funcion: any = null;
+      let desplazado = false;
+      const fechaOriginal = new Date(fechaHora);
 
-      let funcion;
-      try {
-        funcion = await tx.funcion.create({
-          data: { peliculaId: pelicula.id, fechaHora, cupoTotal: dto.cupoTotal },
+      for (let intento = 0; intento < MAX_DIAS_BUSQUEDA; intento++) {
+        const inicioDia = new Date(fechaAsignada);
+        inicioDia.setHours(0, 0, 0, 0);
+        const finDia = new Date(inicioDia);
+        finDia.setDate(finDia.getDate() + 1);
+
+        const conflicto = await tx.funcion.findFirst({
+          where: { fechaHora: { gte: inicioDia, lt: finDia } },
           include: { pelicula: true },
         });
-      } catch (e: any) {
-        if (e.code === 'P2002') throw new ConflictException('Ya existe una función para esa fecha (índice único).');
-        throw e;
+
+        if (!conflicto) {
+          // Día libre -> crear
+          try {
+            funcion = await tx.funcion.create({
+              data: { peliculaId: pelicula.id, fechaHora: fechaAsignada, cupoTotal: dto.cupoTotal },
+              include: { pelicula: true },
+            });
+          } catch (e: any) {
+            if (e.code === 'P2002') {
+              // Carrera: otro proceso ocupó el día entre el find y el create, probar siguiente día
+              fechaAsignada = new Date(fechaAsignada);
+              fechaAsignada.setDate(fechaAsignada.getDate() + 1);
+              fechaAsignada = fijarHora(fechaAsignada, HORA_FUNCION);
+              desplazado = true;
+              continue;
+            }
+            throw e;
+          }
+          break;
+        }
+
+        // Día ocupado -> verificar si tiene reservas que ocupan cupo
+        const ocupados = await tx.reserva.count({
+          where: { funcionId: conflicto.id, ...getFiltroCuposOcupados(new Date()) },
+        });
+
+        if (ocupados > 0) {
+          // Con reservas: no reemplazar, buscar siguiente día
+          this.logger.log(`Día ${fechaAsignada.toISOString().slice(0, 10)} ocupado con ${ocupados} reservas, buscando siguiente día libre`);
+          fechaAsignada = new Date(fechaAsignada);
+          fechaAsignada.setDate(fechaAsignada.getDate() + 1);
+          fechaAsignada = fijarHora(fechaAsignada, HORA_FUNCION);
+          desplazado = true;
+          continue;
+        }
+
+        // Día ocupado sin reservas -> reemplazar película (reprogramar)
+        this.logger.log(`Reemplazando función ${conflicto.id} del ${fechaAsignada.toISOString().slice(0, 10)} (sin reservas) con película ${pelicula.titulo}`);
+        funcion = await tx.funcion.update({
+          where: { id: conflicto.id },
+          data: { peliculaId: pelicula.id, cupoTotal: dto.cupoTotal, fechaHora: fechaAsignada },
+          include: { pelicula: true },
+        });
+        break;
+      }
+
+      if (!funcion) {
+        throw new ConflictException(`No se encontró día disponible en los próximos ${MAX_DIAS_BUSQUEDA} días. Todas las funciones tienen reservas.`);
+      }
+
+      if (desplazado) {
+        this.logger.log(`Sugerencia ${sugerenciaId} desplazada de ${fechaOriginal.toISOString().slice(0, 10)} a ${funcion.fechaHora.toISOString().slice(0, 10)} por ocupación`);
       }
 
       // 5+6) Actualizar Sugerencia con peliculaId + PROGRAMADA
