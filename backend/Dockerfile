@@ -63,6 +63,7 @@ ENV HOST=0.0.0.0
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD wget -qO- http://localhost:3001/api/health || exit 1
 
-USER nestjs
+RUN chmod -R 755 /app 2>/dev/null || true
+
 ENTRYPOINT ["tini", "--"]
 CMD ["sh", "-c", "prisma migrate deploy && node dist/main.js"]
