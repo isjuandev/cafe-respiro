@@ -414,20 +414,6 @@ export default function VotarPage() {
             </span>
           )}
         </div>
-
-        <footer className="mt-8 flex flex-col items-center justify-between gap-4 border-t border-white/5 pt-6 text-xs text-white/40 sm:flex-row">
-          <div className="flex items-center gap-6">
-            <span>Calle 42 #10-25, Armenia, Colombia</span>
-            <span className="flex items-center gap-1">
-              <FaWhatsapp className="text-[#25D366]" /> 300 123 4567
-            </span>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="h-6 w-6 rounded-full border border-white/10 flex items-center justify-center">◎</span>
-            <span className="h-6 w-6 rounded-full border border-white/10 flex items-center justify-center">f</span>
-            <span className="h-6 w-6 rounded-full border border-white/10 flex items-center justify-center">♪</span>
-          </div>
-        </footer>
       </div>
     </div>
   );
