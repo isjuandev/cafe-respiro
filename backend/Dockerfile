@@ -38,7 +38,7 @@ RUN pnpm --filter backend prisma:generate
 RUN pnpm --filter backend build
 
 # ---------- pruner: deps solo de produccion para backend ----------
-# Nota: pnpm deploy --prod rompe engines de Prisma (Ignored build scripts). Copiamos directo desde builder (incluye dev deps pero funcional y cacheable)
+# Con allowBuilds en pnpm-workspace.yaml el engine ya está descargado, pnpm deploy ahora sí preserva @prisma/client
 FROM base AS pruner
 WORKDIR /app
 COPY --from=builder /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
@@ -50,8 +50,11 @@ COPY --from=builder /app/backend/dist ./backend/dist
 COPY --from=builder /app/backend/prisma ./backend/prisma
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/backend/node_modules ./backend/node_modules
-# Copia directa sin pnpm deploy para preservar engines de Prisma
-RUN mkdir -p /prod/backend && cp -r /app/backend/dist /prod/backend/dist && cp -r /app/backend/prisma /prod/backend/prisma && cp /app/backend/package.json /prod/backend/package.json && cp -r /app/backend/node_modules /prod/backend/node_modules && cp -r /app/node_modules /prod/node_modules 2>/dev/null || true; mkdir -p /prod/backend/node_modules/.prisma 2>/dev/null || true; cp -r /app/backend/node_modules/.prisma /prod/backend/node_modules/.prisma 2>/dev/null || true; cp -r /app/node_modules/.pnpm /prod/node_modules/.pnpm 2>/dev/null || true
+RUN pnpm --filter backend deploy --prod /prod/backend --legacy && \
+    rm -rf /prod/backend/dist && rm -rf /prod/backend/prisma && \
+    cp -r /app/backend/dist /prod/backend/dist && \
+    cp -r /app/backend/prisma /prod/backend/prisma && \
+    cp /app/backend/package.json /prod/backend/package.json
 
 # ---------- runner: imagen final minimal ----------
 FROM node:20-alpine AS runner
@@ -66,14 +69,13 @@ ENV PATH="$PNPM_HOME:$PATH"
 # Usuario no-root (requerido por Coolify/docker hardening)
 RUN addgroup -S nodejs -g 1001 && adduser -S nestjs -G nodejs -u 1001
 
-# Copia build + node_modules completos (sin prune agresivo para preservar engines)
+# Copia build + node_modules prod (lean, ~300M)
 COPY --from=pruner --chown=nestjs:nodejs /prod/backend ./backend
-COPY --from=pruner --chown=nestjs:nodejs /prod/node_modules ./node_modules
 WORKDIR /app/backend
 
 # Prisma CLI para `migrate deploy` en runtime
 RUN npm install -g prisma@6.19.3 --ignore-scripts || pnpm add -g prisma@6.19.3
-RUN chown -R nestjs:nodejs /app/backend /app/node_modules 2>/dev/null || true; chmod -R +x /app/backend/node_modules/.prisma /app/backend/node_modules/@prisma 2>/dev/null || true; chmod -R +x /app/node_modules/.prisma /app/node_modules/@prisma 2>/dev/null || true
+RUN chown -R nestjs:nodejs /app/backend 2>/dev/null || true; chmod -R +x /app/backend/node_modules/.prisma /app/backend/node_modules/@prisma 2>/dev/null || true
 
 EXPOSE 3001
 ENV PORT=3001
