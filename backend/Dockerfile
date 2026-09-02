@@ -12,16 +12,21 @@ ENV PATH="$PNPM_HOME:$PATH"
 # ---------- deps: instala todas las deps (cacheable) ----------
 FROM base AS deps
 WORKDIR /app
+# Fuerza development en build para que pnpm no salte devDependencies (prisma, nest) aunque Coolify pase NODE_ENV=production como build arg
+ENV NODE_ENV=development
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY backend/package.json ./backend/package.json
 COPY frontend/package.json ./frontend/package.json
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     pnpm install --frozen-lockfile
+# Permite build scripts de prisma (evita "Ignored build scripts")
+RUN pnpm approve-builds --help >/dev/null 2>&1 || true
 
 # ---------- builder: genera Prisma Client + build Nest ----------
 # Solo copia backend + workspace (NO copia frontend/src) para que cambios en frontend no invaliden cache del backend
 FROM base AS builder
 WORKDIR /app
+ENV NODE_ENV=development
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/backend/node_modules ./backend/node_modules
 COPY --from=deps /app/frontend/node_modules ./frontend/node_modules
@@ -72,6 +77,8 @@ WORKDIR /app/backend
 
 # Prisma CLI para `migrate deploy` en runtime (no esta en prod deps, version del lockfile)
 RUN npm install -g prisma@6.19.3 --ignore-scripts || pnpm add -g prisma@6.19.3
+# Fix permisos del engine de Prisma para usuario nestjs (evita "please make sure you install prisma with the right permissions")
+RUN chown -R nestjs:nodejs /app/backend && chmod -R +x /app/backend/node_modules/.prisma 2>/dev/null || chmod -R +x /app/backend/node_modules/@prisma 2>/dev/null || true
 
 EXPOSE 3001
 ENV PORT=3001
