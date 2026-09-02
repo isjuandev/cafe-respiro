@@ -24,6 +24,14 @@ function daysFromNow(days, hours = 19, minutes = 0) {
   return d;
 }
 
+function genCodigo(prefix = 'CIN') {
+  return `${prefix}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+}
+
+function expiraEn45Min() {
+  return new Date(Date.now() + 45 * 60 * 1000);
+}
+
 async function main() {
   console.log('--- 1. Limpiando base de datos completa ---');
   await prisma.notificationLog.deleteMany();
@@ -693,31 +701,43 @@ async function main() {
     data: [
       {
         id: 'reserva-1',
+        codigo: 'CIN-VAL01',
         funcionId: 'func-hoy-rey-leon',
         nombre: 'Valentina Rojas',
         contacto: normalizeContacto('valentina.rojas@gmail.com'),
         cantidad: 2,
+        expiraEn: expiraEn45Min(),
+        estado: 'CONFIRMADA',
       },
       {
         id: 'reserva-2',
+        codigo: 'CIN-CAR02',
         funcionId: 'func-viernes-avatar',
         nombre: 'Carlos Mendoza',
         contacto: normalizeContacto('carlos.mendoza@hotmail.com'),
         cantidad: 6,
+        expiraEn: expiraEn45Min(),
+        estado: 'CONFIRMADA',
       },
       {
         id: 'reserva-3',
+        codigo: 'CIN-SOF03',
         funcionId: 'func-viernes-avatar',
         nombre: 'Sofía Gómez',
         contacto: normalizeContacto('sofia.gomez@gmail.com'),
         cantidad: 6,
+        expiraEn: expiraEn45Min(),
+        estado: 'PENDIENTE_PAGO',
       },
       {
         id: 'reserva-4',
+        codigo: 'CIN-MAT04',
         funcionId: 'func-viernes-avatar',
         nombre: 'Mateo Ruiz',
         contacto: normalizeContacto('mateo.ruiz@gmail.com'),
         cantidad: 4,
+        expiraEn: expiraEn45Min(),
+        estado: 'PENDIENTE_PAGO',
       },
     ],
   });
