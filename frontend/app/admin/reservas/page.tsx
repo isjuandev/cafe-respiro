@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { FaCheckCircle, FaClock, FaTimesCircle, FaTicketAlt, FaSyncAlt } from "react-icons/fa";
+import { FaCheckCircle, FaClock, FaTimesCircle, FaTicketAlt, FaSyncAlt, FaTrashAlt, FaExclamationTriangle } from "react-icons/fa";
 
 interface Show {
   id: string;
@@ -40,8 +40,11 @@ export default function AdminReservationsPage() {
   const [selected, setSelected] = useState("");
   const [bookings, setBookings] = useState<Booking[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
+  const [bookingToCancel, setBookingToCancel] = useState<Booking | null>(null);
+  const [canceling, setCanceling] = useState(false);
 
   async function fetchShows() {
     try {
@@ -113,6 +116,40 @@ export default function AdminReservationsPage() {
     }
   }
 
+  async function handleConfirmarCancelacion() {
+    if (!bookingToCancel) return;
+    try {
+      setCanceling(true);
+      setError(null);
+      setMessage(null);
+
+      const res = await fetch(`/api/admin/reservas/${bookingToCancel.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "Error al cancelar la reserva");
+      }
+
+      setMessage(
+        `Reserva #${bookingToCancel.codigo} (${bookingToCancel.nombre}) cancelada con éxito. ${bookingToCancel.cantidad} cupo(s) liberado(s).`
+      );
+      setBookingToCancel(null);
+
+      if (selected) {
+        await fetchBookings(selected);
+        await fetchShows();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al cancelar la reserva");
+      setBookingToCancel(null);
+    } finally {
+      setCanceling(false);
+    }
+  }
+
   if (loading) {
     return <div className="h-64 animate-pulse rounded-2xl bg-white/5" />;
   }
@@ -146,6 +183,15 @@ export default function AdminReservationsPage() {
           className="rounded-2xl bg-red-500/10 px-4 py-3 text-xs text-red-300 border border-red-500/20"
         >
           {error}
+        </div>
+      )}
+
+      {message && (
+        <div
+          role="status"
+          className="rounded-2xl bg-green-500/10 px-4 py-3 text-xs text-green-300 border border-green-500/20"
+        >
+          {message}
         </div>
       )}
 
@@ -286,32 +332,44 @@ export default function AdminReservationsPage() {
                               )}
                             </td>
                             <td className="py-3.5 text-right">
-                              {isPendiente && (
-                                <button
-                                  onClick={() => handleConfirmarPago(booking.id)}
-                                  disabled={actionLoading[booking.id]}
-                                  className="inline-flex items-center gap-1.5 rounded-xl bg-green-500 px-3 py-1.5 text-xs font-bold text-black hover:bg-green-400 transition-colors disabled:opacity-50"
-                                >
-                                  {actionLoading[booking.id] ? (
-                                    "Confirmando..."
-                                  ) : (
-                                    <>
-                                      <FaCheckCircle /> Marcar Pagada
-                                    </>
-                                  )}
-                                </button>
-                              )}
-                              {isConfirmada && (
-                                <span className="text-[11px] text-white/40 italic">
-                                  Validada{" "}
-                                  {booking.confirmadoEn
-                                    ? new Date(booking.confirmadoEn).toLocaleTimeString("es-CO", {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                      })
-                                    : ""}
-                                </span>
-                              )}
+                              <div className="flex items-center justify-end gap-2">
+                                {isPendiente && (
+                                  <button
+                                    onClick={() => handleConfirmarPago(booking.id)}
+                                    disabled={actionLoading[booking.id]}
+                                    className="inline-flex items-center gap-1.5 rounded-xl bg-green-500 px-3 py-1.5 text-xs font-bold text-black hover:bg-green-400 transition-colors disabled:opacity-50"
+                                  >
+                                    {actionLoading[booking.id] ? (
+                                      "Confirmando..."
+                                    ) : (
+                                      <>
+                                        <FaCheckCircle /> Marcar Pagada
+                                      </>
+                                    )}
+                                  </button>
+                                )}
+                                {isConfirmada && (
+                                  <span className="text-[11px] text-white/40 italic mr-1">
+                                    Validada{" "}
+                                    {booking.confirmadoEn
+                                      ? new Date(booking.confirmadoEn).toLocaleTimeString("es-CO", {
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                        })
+                                      : ""}
+                                  </span>
+                                )}
+                                {(isPendiente || isConfirmada) && (
+                                  <button
+                                    onClick={() => setBookingToCancel(booking)}
+                                    className="inline-flex items-center gap-1 rounded-xl border border-red-500/20 bg-red-500/10 px-2.5 py-1.5 text-xs font-bold text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors"
+                                    title="Cancelar esta reserva y liberar cupos"
+                                  >
+                                    <FaTrashAlt className="text-[10px]" />
+                                    <span>Cancelar</span>
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         );
@@ -323,6 +381,60 @@ export default function AdminReservationsPage() {
             </section>
           )}
         </>
+      )}
+
+      {/* Modal de Cancelación de Reserva */}
+      {bookingToCancel && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#111114] p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-red-400">
+              <div className="rounded-xl bg-red-500/10 p-2.5 border border-red-500/20">
+                <FaExclamationTriangle className="text-xl" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-white font-serif">¿Cancelar Reserva?</h3>
+                <p className="text-xs text-white/50">Código: #{bookingToCancel.codigo}</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-white/80 leading-relaxed">
+              Estás a punto de cancelar la reserva a nombre de{" "}
+              <strong className="text-white">{bookingToCancel.nombre}</strong> (
+              <span className="font-mono text-[#E8B86A]">{bookingToCancel.contacto}</span>) por{" "}
+              <strong className="text-white">
+                {bookingToCancel.cantidad} {bookingToCancel.cantidad === 1 ? "cupo" : "cupos"}
+              </strong>
+              .
+            </p>
+
+            <div className="rounded-2xl bg-amber-500/10 border border-amber-500/20 p-3.5 text-xs text-amber-300 flex items-start gap-2">
+              <FaExclamationTriangle className="mt-0.5 text-sm shrink-0" />
+              <span>
+                <strong>Atención:</strong> Al cancelar esta reserva, los{" "}
+                <strong>{bookingToCancel.cantidad}</strong> cupos quedarán inmediatamente liberados y disponibles para nuevos clientes en la cartelera.
+              </span>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                disabled={canceling}
+                onClick={() => setBookingToCancel(null)}
+                className="rounded-xl border border-white/10 px-4 py-2 text-xs font-bold text-white/70 hover:bg-white/5 hover:text-white transition-colors"
+              >
+                Volver
+              </button>
+              <button
+                type="button"
+                disabled={canceling}
+                onClick={handleConfirmarCancelacion}
+                className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-500 transition-colors disabled:opacity-50"
+              >
+                {canceling ? "Cancelando..." : "Sí, Cancelar Reserva"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

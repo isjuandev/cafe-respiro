@@ -406,6 +406,19 @@ export class ReservasService {
       throw new NotFoundException('Reserva no encontrada');
     }
 
+    if (reserva.estado === ReservaEstado.CANCELADA) {
+      throw new ConflictException('La reserva ya se encuentra cancelada');
+    }
+
+    const ahora = new Date();
+    const fechaFuncion = new Date(reserva.funcion.fechaHora);
+    const diffMs = fechaFuncion.getTime() - ahora.getTime();
+    const diffHoras = diffMs / (1000 * 60 * 60);
+
+    if (diffMs <= 0) {
+      throw new ConflictException('No se puede cancelar una reserva para una función que ya ha iniciado o pasado');
+    }
+
     if (authUser.role !== 'admin') {
       const isOwner =
         (reserva.usuarioId && reserva.usuarioId === authUser.sub) ||
@@ -416,16 +429,12 @@ export class ReservasService {
         throw new ForbiddenException('No tienes permiso para cancelar esta reserva');
       }
 
-      // Bloquear cancelación por parte del usuario si la reserva ya fue pagada/confirmada
-      if (reserva.estado === ReservaEstado.CONFIRMADA) {
+      // Regla de negocio: Mínimo 4 horas de anticipación a la función
+      if (diffHoras < 4) {
         throw new ConflictException(
-          'No puedes cancelar una reserva que ya ha sido pagada y confirmada. Comunícate directamente con Café Respiro.'
+          'Las cancelaciones solo se permiten con un mínimo de 4 horas de anticipación al inicio de la función. Para casos especiales, comunícate directamente con Café Respiro.'
         );
       }
-    }
-
-    if (new Date(reserva.funcion.fechaHora) <= new Date()) {
-      throw new ConflictException('No se puede cancelar la reserva de una función pasada');
     }
 
     const cancelada = await this.prisma.reserva.update({
@@ -444,6 +453,7 @@ export class ReservasService {
             funcionId: reserva.funcionId,
             pelicula: reserva.funcion.pelicula?.titulo,
             cantidad: reserva.cantidad,
+            canceladoPor: authUser?.role || 'cliente',
           } as any,
         },
       });
@@ -451,9 +461,76 @@ export class ReservasService {
       this.logger.warn(`NotificationLog cancelada falló: ${e}`);
     }
 
+    this.logger.log(`Reserva ${reserva.codigo} (${reserva.id}) cancelada por ${authUser?.role || 'cliente'}. ${reserva.cantidad} cupos liberados.`);
+
     return {
       ok: true,
       message: 'Reserva cancelada exitosamente',
+      funcionId: reserva.funcionId,
+      cuposLiberados: reserva.cantidad,
+    };
+  }
+
+  async cancelarPorCodigo(codigo: string) {
+    const cleanCodigo = codigo.trim().toUpperCase();
+    const reserva = await this.prisma.reserva.findUnique({
+      where: { codigo: cleanCodigo },
+      include: { funcion: { include: { pelicula: true } } },
+    });
+
+    if (!reserva) {
+      throw new NotFoundException('Reserva no encontrada');
+    }
+
+    if (reserva.estado === ReservaEstado.CANCELADA) {
+      throw new ConflictException('Esta reserva ya se encuentra cancelada');
+    }
+
+    const ahora = new Date();
+    const fechaFuncion = new Date(reserva.funcion.fechaHora);
+    const diffMs = fechaFuncion.getTime() - ahora.getTime();
+    const diffHoras = diffMs / (1000 * 60 * 60);
+
+    if (diffMs <= 0) {
+      throw new ConflictException('No se puede cancelar una reserva para una función que ya ha iniciado o pasado');
+    }
+
+    if (diffHoras < 4) {
+      throw new ConflictException(
+        'Las cancelaciones solo se permiten con un mínimo de 4 horas de anticipación al inicio de la función. Para casos especiales, comunícate directamente con Café Respiro.'
+      );
+    }
+
+    await this.prisma.reserva.update({
+      where: { id: reserva.id },
+      data: { estado: ReservaEstado.CANCELADA },
+    });
+
+    try {
+      await this.prisma.notificationLog.create({
+        data: {
+          tipo: 'RESERVA_CANCELADA',
+          destinatario: reserva.contacto,
+          payload: {
+            reservaId: reserva.id,
+            codigo: reserva.codigo,
+            funcionId: reserva.funcionId,
+            pelicula: reserva.funcion.pelicula?.titulo,
+            cantidad: reserva.cantidad,
+            canceladoPor: 'cliente_por_codigo',
+          } as any,
+        },
+      });
+    } catch (e) {
+      this.logger.warn(`NotificationLog cancelada por código falló: ${e}`);
+    }
+
+    this.logger.log(`Reserva ${reserva.codigo} cancelada por código. ${reserva.cantidad} cupos liberados.`);
+
+    return {
+      ok: true,
+      message: 'Reserva cancelada exitosamente',
+      codigo: reserva.codigo,
       funcionId: reserva.funcionId,
       cuposLiberados: reserva.cantidad,
     };

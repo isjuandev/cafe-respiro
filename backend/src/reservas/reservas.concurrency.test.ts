@@ -182,6 +182,9 @@ function createMockPrisma(initial: {
       reservas: reservas.map((r) => ({ ...r })),
       notificationCalls: [...notificationCalls],
     }),
+    __setFuncionFechaHora: (d: Date) => {
+      funcion.fechaHora = d;
+    },
     __addNotification: (n: any) => notificationCalls.push(n),
   };
 
@@ -322,11 +325,14 @@ async function run() {
     console.log('✓ Test 3 PASÓ: idempotencia y prevención de acumulación pendiente\n');
   }
 
-  console.log('=== Test 4: Cancelación exitosa y liberación de cupos ===');
+  console.log('=== Test 4: Cancelación exitosa y reglas de 4 horas antes de la función ===');
   {
-    const future = new Date(Date.now() + 86400000);
+    const future24h = new Date(Date.now() + 24 * 3600000);
+    const soon2h = new Date(Date.now() + 2 * 3600000);
+    const past = new Date(Date.now() - 3600000);
+
     const prisma = createMockPrisma({
-      funcion: { id: 'func-1', cupoTotal: 15, fechaHora: future },
+      funcion: { id: 'func-1', cupoTotal: 15, fechaHora: future24h },
       reservas: [
         {
           id: 'res-cancel-1',
@@ -359,35 +365,76 @@ async function run() {
       console.log('✓ Rechazado intento de cancelación ajena (403 Forbidden)');
     }
 
-    // 2. Intento de cancelar reserva ya confirmada/pagada por el cliente (debe ser Conflict)
-    try {
-      await service.cancelar('res-cancel-confirmed', {
-        contacto: 'confirmed@test.com',
-        role: 'cliente',
-      });
-      throw new Error('Cliente no debe poder cancelar reserva pagada/confirmada');
-    } catch (e: any) {
-      if (!e.message.includes('No puedes cancelar una reserva que ya ha sido pagada')) throw e;
-      console.log('✓ Rechazado intento de cancelación de reserva confirmada/pagada (409 Conflict)');
-    }
-
-    // 3. Cancelación legítima de reserva pendiente por el dueño de la reserva
-    const cancelRes = await service.cancelar('res-cancel-1', {
-      contacto: 'cancel@test.com',
+    // 2. Cancelación legítima de reserva confirmada con 24h de anticipación (>= 4h)
+    const cancelConfirmedRes = await service.cancelar('res-cancel-confirmed', {
+      contacto: 'confirmed@test.com',
       role: 'cliente',
     });
-    console.log('✓ Cancelación exitosa de reserva pendiente:', cancelRes.message, 'Cupos liberados:', cancelRes.cuposLiberados);
+    console.log('✓ Cancelación exitosa de reserva confirmada (>=4h):', cancelConfirmedRes.message, 'Cupos liberados:', cancelConfirmedRes.cuposLiberados);
 
-    // 4. Cancelación administrativa de reserva confirmada permitida para staff
-    const adminCancelRes = await service.cancelar('res-cancel-confirmed', {
+    // 3. Intento de cancelar reserva con menos de 4 horas por cliente (debe fallar)
+    // Cambiamos la fechaHora de la función a 2 horas en el futuro
+    (prisma as any).__setFuncionFechaHora(soon2h);
+    try {
+      await service.cancelar('res-cancel-1', {
+        contacto: 'cancel@test.com',
+        role: 'cliente',
+      });
+      throw new Error('Cliente no debe poder cancelar con menos de 4 horas');
+    } catch (e: any) {
+      if (!e.message.includes('mínimo de 4 horas')) throw e;
+      console.log('✓ Rechazado intento de cancelación con < 4h para el cliente (409 Conflict):', e.message);
+    }
+
+    // 4. Admin sí puede cancelar reserva aunque falten < 4h (override administrativo)
+    const adminCancelRes = await service.cancelar('res-cancel-1', {
       role: 'admin',
     });
-    console.log('✓ Admin puede cancelar reserva confirmada:', adminCancelRes.message);
+    console.log('✓ Admin puede cancelar reserva incluso con < 4h:', adminCancelRes.message, 'Cupos liberados:', adminCancelRes.cuposLiberados);
 
     const state = prisma.__getState();
-    const resRow = state.reservas.find((r: any) => r.id === 'res-cancel-1');
-    if (resRow?.estado !== ReservaEstado.CANCELADA) throw new Error('La reserva debe ser marcada como CANCELADA');
-    console.log('✓ Test 4 PASÓ: reglas de cancelación y bloqueo de reservas pagadas validadas\n');
+    const resRow1 = state.reservas.find((r: any) => r.id === 'res-cancel-1');
+    const resRow2 = state.reservas.find((r: any) => r.id === 'res-cancel-confirmed');
+    if (resRow1?.estado !== ReservaEstado.CANCELADA || resRow2?.estado !== ReservaEstado.CANCELADA) {
+      throw new Error('Ambas reservas deben estar marcadas como CANCELADA');
+    }
+    console.log('✓ Test 4 PASÓ: regla de 4 horas y cancelación confirmada validadas\n');
+  }
+
+  console.log('=== Test 5: Cancelación de reserva por código (/mi-reserva/[codigo]) ===');
+  {
+    const future24h = new Date(Date.now() + 24 * 3600000);
+    const prisma = createMockPrisma({
+      funcion: { id: 'func-code', cupoTotal: 15, fechaHora: future24h },
+      reservas: [
+        {
+          id: 'res-code-1',
+          funcionId: 'func-code',
+          contacto: 'guest@test.com',
+          cantidad: 2,
+          estado: ReservaEstado.CONFIRMADA,
+        },
+      ],
+    });
+    const service = new ReservasService(
+      prisma as any,
+      createMockNotifications(prisma),
+      createMockConfigPago()
+    );
+
+    const targetRes = prisma.__getState().reservas[0];
+    const res = await service.cancelarPorCodigo(targetRes.codigo);
+    console.log('✓ Cancelación por código exitosa:', res.message, 'Código:', res.codigo);
+
+    // Intentar cancelar de nuevo debe dar error
+    try {
+      await service.cancelarPorCodigo(targetRes.codigo);
+      throw new Error('Debe fallar al cancelar reserva ya cancelada');
+    } catch (e: any) {
+      if (!e.message.includes('ya se encuentra cancelada')) throw e;
+      console.log('✓ Rechazo correcto al intentar re-cancelar:', e.message);
+    }
+    console.log('✓ Test 5 PASÓ: cancelación por código con validación de estado\n');
   }
 
   console.log('Todos los tests de carrera y cancelación de reservas PASARON.');

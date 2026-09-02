@@ -179,6 +179,12 @@ export default function DashboardPage() {
               <strong className="text-[#E8B86A]">{cancelingReserva.funcion.pelicula.titulo}</strong>.
             </p>
 
+            <div className="mt-4 rounded-xl bg-amber-500/10 border border-amber-500/20 p-3 text-xs text-amber-300 text-left">
+              <span>
+                <strong>Nota:</strong> Al confirmar, tu reserva quedará cancelada y los cupos se liberarán inmediatamente para otros asistentes.
+              </span>
+            </div>
+
             <div className="mt-6 flex gap-3">
               <button
                 type="button"
@@ -290,6 +296,11 @@ export default function DashboardPage() {
               const isVencida = reserva.estadoEfectivo === "VENCIDA";
               const isCancelada = reserva.estadoEfectivo === "CANCELADA";
 
+              const diffMs = date.getTime() - Date.now();
+              const diffHoras = diffMs / (1000 * 60 * 60);
+              const puedeCancelar = (isPendiente || isConfirmada) && diffHoras >= 4;
+              const noCancelablePorTiempo = (isPendiente || isConfirmada) && diffHoras < 4 && diffHoras > 0;
+
               return (
                 <article
                   key={reserva.id}
@@ -337,14 +348,23 @@ export default function DashboardPage() {
                         {reserva.cantidad === 1 ? "cupo" : "cupos"}
                       </span>
 
-                      {isPendiente && (
+                      {puedeCancelar && (
                         <button
                           onClick={() => setCancelingReserva(reserva)}
                           className="inline-flex items-center gap-1.5 rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1 text-xs font-bold text-red-300 hover:bg-red-500/20 hover:text-white transition-colors"
-                          title="Cancelar reserva pendiente"
+                          title="Cancelar reserva y liberar cupos"
                         >
                           <FaTrashAlt className="text-[10px]" /> Cancelar
                         </button>
+                      )}
+
+                      {noCancelablePorTiempo && (
+                        <span
+                          className="rounded-full bg-white/5 border border-white/10 px-2.5 py-1 text-[10px] text-white/40 italic"
+                          title="Las cancelaciones solo se permiten con mínimo 4 horas de anticipación"
+                        >
+                          No cancelable (&lt; 4h)
+                        </span>
                       )}
                     </div>
                   </div>

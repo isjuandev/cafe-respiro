@@ -13,6 +13,8 @@ import {
   FaTimesCircle,
   FaArrowLeft,
   FaSyncAlt,
+  FaTrashAlt,
+  FaExclamationTriangle,
 } from "react-icons/fa";
 
 interface ItemReserva {
@@ -69,6 +71,9 @@ export default function MiReservaPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState<string>("");
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [canceling, setCanceling] = useState(false);
+  const [cancelFeedback, setCancelFeedback] = useState<string | null>(null);
 
   async function fetchReserva() {
     try {
@@ -85,6 +90,32 @@ export default function MiReservaPage({
       setError(err instanceof Error ? err.message : "Error desconocido");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleCancelByCode() {
+    try {
+      setCanceling(true);
+      setError(null);
+      setCancelFeedback(null);
+
+      const res = await fetch(`/api/reservas/${codigo}/cancelar`, {
+        method: "POST",
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "Error al cancelar la reserva");
+      }
+
+      setCancelFeedback("Tu reserva ha sido cancelada exitosamente y los cupos han sido liberados.");
+      setShowCancelModal(false);
+      await fetchReserva();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error desconocido al cancelar");
+      setShowCancelModal(false);
+    } finally {
+      setCanceling(false);
     }
   }
 
@@ -164,6 +195,11 @@ export default function MiReservaPage({
     maximumFractionDigits: 0,
   }).format(total);
 
+  const diffMs = fechaObj.getTime() - Date.now();
+  const diffHoras = diffMs / (1000 * 60 * 60);
+  const puedeCancelar = (estado === "CONFIRMADA" || estado === "PENDIENTE_PAGO") && diffHoras >= 4;
+  const noCancelable = (estado === "CONFIRMADA" || estado === "PENDIENTE_PAGO") && diffHoras < 4 && diffHoras > 0;
+
   return (
     <div className="min-h-screen bg-[#070709] text-white py-10 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-3xl space-y-8">
@@ -183,6 +219,21 @@ export default function MiReservaPage({
             <FaSyncAlt className={loading ? "animate-spin text-xs" : "text-xs"} /> Actualizar
           </button>
         </div>
+
+        {cancelFeedback && (
+          <div className="flex items-center justify-between gap-2 rounded-2xl border border-green-500/30 bg-green-500/10 p-4 text-xs font-medium text-green-300">
+            <div className="flex items-center gap-2">
+              <FaCheckCircle className="shrink-0 text-sm" />
+              <span>{cancelFeedback}</span>
+            </div>
+            <button
+              onClick={() => setCancelFeedback(null)}
+              className="text-xs font-bold hover:text-white"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* HERO STATUS CARD (Neutral & Natural) */}
         <div
@@ -329,6 +380,38 @@ export default function MiReservaPage({
           </div>
         </div>
 
+        {/* GESTIÓN / CANCELACIÓN DE RESERVA */}
+        {(puedeCancelar || noCancelable) && (
+          <div className="rounded-3xl border border-white/10 bg-[#111114] p-6 text-xs space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                  ¿No puedes asistir a la función?
+                </h4>
+                <p className="mt-1 text-white/60 max-w-md">
+                  Las cancelaciones están permitidas con un mínimo de 4 horas de anticipación a la función para liberar tus cupos para otros clientes.
+                </p>
+              </div>
+
+              {puedeCancelar && (
+                <button
+                  type="button"
+                  onClick={() => setShowCancelModal(true)}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2.5 font-bold text-red-300 hover:bg-red-500/20 hover:text-white transition-colors"
+                >
+                  <FaTrashAlt className="text-xs" /> Cancelar Reserva
+                </button>
+              )}
+
+              {noCancelable && (
+                <span className="rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-white/40 italic">
+                  Cancelación no disponible (&lt; 4h para la función)
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* TARJETA DE DATOS BANCARIOS (Si sigue pendiente) */}
         {estado === "PENDIENTE_PAGO" && (
           <div className="space-y-4">
@@ -339,6 +422,51 @@ export default function MiReservaPage({
           </div>
         )}
       </div>
+
+      {/* Modal de Cancelación por Código */}
+      {showCancelModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#111114] p-6 shadow-2xl space-y-4 text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-red-500/20 bg-red-500/10 text-red-400">
+              <FaExclamationTriangle className="text-2xl" />
+            </div>
+
+            <h3 className="text-xl font-bold text-white">¿Cancelar tu reserva?</h3>
+            <p className="text-xs text-white/70 leading-relaxed">
+              Estás a punto de cancelar tu reserva de{" "}
+              <strong className="text-white">
+                {reserva.cantidad} {reserva.cantidad === 1 ? "cupo" : "cupos"}
+              </strong>{" "}
+              para la función de <strong className="text-[#E8B86A]">{pelicula.titulo}</strong>.
+            </p>
+
+            <div className="rounded-2xl bg-amber-500/10 border border-amber-500/20 p-3 text-xs text-amber-300 text-left">
+              <span>
+                <strong>Importante:</strong> Al confirmar, tu código #{reserva.codigo} quedará cancelado y los cupos se liberarán inmediatamente.
+              </span>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                disabled={canceling}
+                onClick={() => setShowCancelModal(false)}
+                className="flex-1 rounded-xl border border-white/20 bg-white/5 py-3 text-xs font-bold text-white hover:bg-white/10 transition-colors disabled:opacity-50"
+              >
+                Volver
+              </button>
+              <button
+                type="button"
+                disabled={canceling}
+                onClick={handleCancelByCode}
+                className="flex-1 rounded-xl bg-red-600 py-3 text-xs font-bold text-white hover:bg-red-500 transition-colors disabled:opacity-50"
+              >
+                {canceling ? "Cancelando..." : "Sí, Cancelar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -64,4 +64,23 @@ export class ReservasController {
     const user = (req as any).user;
     return this.reservasService.cancelar(id, user);
   }
+
+  /**
+   * Cancelación administrativa explícita de reserva por ID.
+   */
+  @UseGuards(AuthGuard)
+  @RequireRole('admin')
+  @Delete('admin/reservas/:id')
+  async adminCancelar(@Param('id') id: string, @Req() req: Request) {
+    const admin = (req as any).admin || (req as any).user || { role: 'admin' };
+    return this.reservasService.cancelar(id, { role: 'admin', sub: admin?.sub || 'admin' });
+  }
+
+  /**
+   * Cancelación de reserva por cliente usando su código de ticket (/mi-reserva/[codigo]).
+   */
+  @Post('reservas/:codigo/cancelar')
+  async cancelarPorCodigo(@Param('codigo') codigo: string) {
+    return this.reservasService.cancelarPorCodigo(codigo);
+  }
 }
