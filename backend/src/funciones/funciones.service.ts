@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, ConflictException, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { fijarHora, HORA_FUNCION } from '../common/utils/horarios';
 import { getFiltroCuposOcupados } from '../reservas/reservas.utils';
@@ -108,5 +108,59 @@ export class FuncionesService {
     }
 
     throw new ConflictException(`No se encontró día disponible en los próximos ${MAX_DIAS_BUSQUEDA} días. Todas las funciones tienen reservas.`);
+  }
+
+  async eliminar(id: string) {
+    const funcion = await this.prisma.funcion.findUnique({
+      where: { id },
+      include: {
+        pelicula: true,
+      },
+    });
+
+    if (!funcion) {
+      throw new NotFoundException('Función no encontrada');
+    }
+
+    return await this.prisma.$transaction(async (tx) => {
+      // Si la película ya no tiene otras funciones programadas,
+      // revertir las sugerencias asociadas que estaban en PROGRAMADA a GANADORA
+      const otrasFunciones = await tx.funcion.count({
+        where: {
+          peliculaId: funcion.peliculaId,
+          id: { not: id },
+        },
+      });
+
+      if (otrasFunciones === 0) {
+        await tx.sugerencia.updateMany({
+          where: {
+            peliculaId: funcion.peliculaId,
+            estado: 'PROGRAMADA',
+          },
+          data: {
+            estado: 'GANADORA',
+          },
+        });
+      }
+
+      // Eliminar la función (reservas se eliminan en cascada por foreign key Prisma)
+      await tx.funcion.delete({
+        where: { id },
+      });
+
+      this.logger.log(`Función ${id} (${funcion.pelicula.titulo} - ${funcion.fechaHora.toISOString()}) eliminada`);
+
+      return {
+        success: true,
+        message: `Función de "${funcion.pelicula.titulo}" quitada de la programación exitosamente`,
+        funcion: {
+          id: funcion.id,
+          peliculaId: funcion.peliculaId,
+          titulo: funcion.pelicula.titulo,
+          fechaHora: funcion.fechaHora,
+        },
+      };
+    });
   }
 }

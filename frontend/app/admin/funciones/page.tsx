@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { FaCalendarAlt, FaPlus, FaUsers, FaClock } from "react-icons/fa";
+import { FaCalendarAlt, FaPlus, FaUsers, FaClock, FaTrashAlt, FaExclamationTriangle } from "react-icons/fa";
 
 interface Movie {
   id: string;
@@ -26,6 +26,8 @@ export default function AdminFunctionsPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showToDelete, setShowToDelete] = useState<Show | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   async function loadData() {
     try {
@@ -105,6 +107,34 @@ export default function AdminFunctionsPage() {
       setError(e instanceof Error ? e.message : "Error al programar función");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function confirmDeleteFunction() {
+    if (!showToDelete) return;
+    setDeleting(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const res = await fetch(`/api/admin/funciones/${showToDelete.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "No se pudo quitar la función");
+      }
+
+      setMessage(data.message || `Función de "${showToDelete.pelicula.titulo}" quitada de la programación`);
+      setShowToDelete(null);
+      await loadData();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al quitar la función");
+      setShowToDelete(null);
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -236,6 +266,15 @@ export default function AdminFunctionsPage() {
                 <FaUsers className="text-[10px]" />
                 {show.cuposDisponibles ?? 0} disp. / {show.cupoTotal} puestos
               </span>
+              <button
+                type="button"
+                onClick={() => setShowToDelete(show)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors"
+                title="Quitar de la programación"
+              >
+                <FaTrashAlt className="text-[10px]" />
+                <span>Quitar</span>
+              </button>
             </div>
           </article>
         ))}
@@ -245,6 +284,76 @@ export default function AdminFunctionsPage() {
           </p>
         )}
       </section>
+
+      {/* Modal de Confirmación de Eliminación */}
+      {showToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#111114] p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-red-400">
+              <div className="rounded-xl bg-red-500/10 p-2.5 border border-red-500/20">
+                <FaTrashAlt className="text-lg" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-white font-serif">Quitar de la Programación</h3>
+                <p className="text-xs text-white/50">Esta acción desprogramará la función.</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-white/80 leading-relaxed">
+              ¿Estás seguro de que deseas quitar la función de{" "}
+              <strong className="text-white font-bold">{showToDelete.pelicula.titulo}</strong> programada para el{" "}
+              <span className="text-[#E8B86A]">
+                {new Date(showToDelete.fechaHora).toLocaleString("es-CO", {
+                  dateStyle: "full",
+                  timeStyle: "short",
+                })}
+              </span>
+              ?
+            </p>
+
+            {((showToDelete.cuposOcupados ?? 0) > 0 ||
+              (showToDelete.cupoTotal - (showToDelete.cuposDisponibles ?? showToDelete.cupoTotal)) > 0) && (
+              <div className="flex items-start gap-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 p-3 text-xs text-amber-300">
+                <FaExclamationTriangle className="mt-0.5 text-sm shrink-0" />
+                <span>
+                  <strong>Atención:</strong> Esta función cuenta con{" "}
+                  <strong>
+                    {showToDelete.cuposOcupados ??
+                      showToDelete.cupoTotal - (showToDelete.cuposDisponibles ?? showToDelete.cupoTotal)}
+                  </strong>{" "}
+                  cupos ocupados / reservas registradas. Al desprogramarla, la función y sus reservas asociadas serán canceladas.
+                </span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => setShowToDelete(null)}
+                className="rounded-xl border border-white/10 px-4 py-2 text-xs font-bold text-white/70 hover:bg-white/5 hover:text-white transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={confirmDeleteFunction}
+                className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-500 transition-colors disabled:opacity-50"
+              >
+                {deleting ? (
+                  "Quitando..."
+                ) : (
+                  <>
+                    <FaTrashAlt className="text-xs" />
+                    <span>Confirmar y Quitar</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

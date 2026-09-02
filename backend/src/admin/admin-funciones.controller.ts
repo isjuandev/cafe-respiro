@@ -1,9 +1,10 @@
-import { Controller, Post, Get, Param, Body, UseGuards, NotFoundException, Logger } from '@nestjs/common';
+import { Controller, Post, Get, Delete, Param, Body, UseGuards, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthGuard } from '../common/guards/auth.guard';
 import { RequireRole } from '../common/decorators/require-role.decorator';
 import { CreateFuncionDto } from './dto/create-funcion.dto';
 import { SugerenciasService } from '../sugerencias/sugerencias.service';
+import { FuncionesService } from '../funciones/funciones.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { getEstadoEfectivo, getFiltroCuposOcupados } from '../reservas/reservas.utils';
 
@@ -15,6 +16,7 @@ export class AdminFuncionesController {
   constructor(
     private prisma: PrismaService,
     private sugerenciasService: SugerenciasService,
+    private funcionesService: FuncionesService,
     private notifications: NotificationsService,
   ) {}
 
@@ -23,6 +25,11 @@ export class AdminFuncionesController {
     const result = await this.sugerenciasService.programar(dto.sugerenciaId, { fechaHora: dto.fechaHora, cupoTotal: dto.cupoTotal }, { manual: false });
     this.notifications.notifySugerenciaProgramada(result.sugerencia).catch((e) => this.logger.warn(`notifySugerenciaProgramada falló: ${e}`));
     return { funcion: result.funcion, pelicula: result.pelicula, sugerencia: result.sugerencia };
+  }
+
+  @Delete(':id')
+  async remove(@Param('id') id: string) {
+    return this.funcionesService.eliminar(id);
   }
 
   @Get(':id/reservas')
