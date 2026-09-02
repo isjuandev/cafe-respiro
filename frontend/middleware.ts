@@ -37,8 +37,8 @@ export function middleware(request: NextRequest) {
   // Dashboard de cliente protegido (/dashboard)
   if (pathname.startsWith("/dashboard")) {
     if (!token) {
-      const loginUrl = new URL("/login", request.url);
-      return NextResponse.redirect(loginUrl);
+      const targetUrl = new URL("/mis-reservas", request.url);
+      return NextResponse.redirect(targetUrl);
     }
     // Si es admin, redirigir al panel de administración para evitar loop
     if (role === "admin") {

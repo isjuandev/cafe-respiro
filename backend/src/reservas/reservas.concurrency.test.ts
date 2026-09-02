@@ -10,23 +10,26 @@ import { Prisma, ReservaEstado } from '@prisma/client';
 
 // Mock Prisma que simula Postgres FOR UPDATE + aggregate dentro de transacción
 function createMockPrisma(initial: {
-  funcion: { id: string; cupoTotal: number; fechaHora: Date };
+  funcion: { id: string; cupoTotal: number; fechaHora?: Date };
   reservas: Array<{
     id?: string;
+    codigo?: string;
     funcionId: string;
     contacto: string;
+    email?: string;
     cantidad: number;
     nombre?: string;
     estado?: ReservaEstado;
     expiraEn?: Date;
   }>;
 }) {
-  let funcion = { ...initial.funcion };
+  let funcion = { fechaHora: new Date(Date.now() + 24 * 3600000), ...initial.funcion };
   let reservas = initial.reservas.map((r, i) => ({
     id: r.id || `res-init-${i}`,
-    codigo: `CIN-TEST${i}`,
+    codigo: r.codigo || `CIN-TEST${i}`,
     nombre: r.nombre || 'Cliente',
     total: r.cantidad * 15000,
+    email: r.email || `${r.contacto}@test.com`,
     estado: r.estado || ReservaEstado.CONFIRMADA,
     expiraEn: r.expiraEn || new Date(Date.now() + 3600000),
     items: [],
@@ -97,6 +100,24 @@ function createMockPrisma(initial: {
           funcion: { ...funcion, pelicula: { id: 'pel-1', titulo: 'Test' } },
           items: [],
         };
+      },
+      findMany: async ({ where }: any) => {
+        let list = reservas;
+        if (where?.OR) {
+          list = reservas.filter((r) =>
+            where.OR.some((cond: any) => {
+              if (cond.codigo && r.codigo === cond.codigo) return true;
+              if (cond.contacto && r.contacto === cond.contacto) return true;
+              if (cond.email && r.email === cond.email) return true;
+              return false;
+            })
+          );
+        }
+        return list.map((r) => ({
+          ...r,
+          items: r.items || [],
+          funcion: { ...funcion, pelicula: { id: 'pel-1', titulo: 'Test', posterUrl: null, duracionMin: 120 } },
+        }));
       },
     },
     notificationLog: {
@@ -435,6 +456,62 @@ async function run() {
       console.log('✓ Rechazo correcto al intentar re-cancelar:', e.message);
     }
     console.log('✓ Test 5 PASÓ: cancelación por código con validación de estado\n');
+  }
+
+  console.log('=== Test 6: Consulta pública de reservas (/reservas/consultar) ===');
+  {
+    const prisma = createMockPrisma({
+      funcion: { id: 'func-consultar', cupoTotal: 15 },
+      reservas: [
+        {
+          id: 'res-pub-1',
+          codigo: 'CIN-BUSC1',
+          funcionId: 'func-consultar',
+          contacto: '3001234567',
+          email: 'cliente@test.com',
+          cantidad: 2,
+          estado: ReservaEstado.CONFIRMADA,
+        },
+        {
+          id: 'res-pub-2',
+          codigo: 'CIN-BUSC2',
+          funcionId: 'func-consultar',
+          contacto: '3001234567',
+          email: 'cliente@test.com',
+          cantidad: 1,
+          estado: ReservaEstado.PENDIENTE_PAGO,
+        },
+      ],
+    });
+    const service = new ReservasService(
+      prisma as any,
+      createMockNotifications(prisma),
+      createMockConfigPago()
+    );
+
+    // 1. Búsqueda por código exacto
+    const porCodigo = await service.consultarPublicas('CIN-BUSC1');
+    if (porCodigo.length !== 1 || porCodigo[0].codigo !== 'CIN-BUSC1') {
+      throw new Error('Búsqueda por código falló');
+    }
+    console.log('✓ Consulta por código retornó la reserva correcta:', porCodigo[0].codigo);
+
+    // 2. Búsqueda por teléfono/contacto (debe retornar ambas)
+    const porContacto = await service.consultarPublicas('3001234567');
+    if (porContacto.length !== 2) {
+      throw new Error('Búsqueda por contacto debe retornar 2 reservas');
+    }
+    console.log('✓ Consulta por teléfono retornó reservas asociadas:', porContacto.length);
+
+    // 3. Criterio menor a 3 caracteres debe fallar
+    try {
+      await service.consultarPublicas('ab');
+      throw new Error('Debe rechazar criterio con menos de 3 caracteres');
+    } catch (e: any) {
+      if (!e.message.includes('al menos 3 caracteres')) throw e;
+      console.log('✓ Validación de mínimo 3 caracteres correcta');
+    }
+    console.log('✓ Test 6 PASÓ: consulta pública por código y contacto validada\n');
   }
 
   console.log('Todos los tests de carrera y cancelación de reservas PASARON.');

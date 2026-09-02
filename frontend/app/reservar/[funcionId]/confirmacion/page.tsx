@@ -284,10 +284,10 @@ export default function ConfirmacionReservaPage({
         </Link>
 
         <Link
-          href="/dashboard"
+          href={reserva?.codigo ? `/mi-reserva/${reserva.codigo}` : "/mis-reservas"}
           className="inline-flex items-center gap-2 rounded-2xl border border-[#E8B86A]/30 bg-[#E8B86A]/10 px-6 py-3.5 text-xs font-bold uppercase tracking-wider text-[#E8B86A] hover:bg-[#E8B86A] hover:text-black transition-all"
         >
-          Ver Mis Reservas →
+          Ver Mi Ticket Digital →
         </Link>
       </div>
     </div>

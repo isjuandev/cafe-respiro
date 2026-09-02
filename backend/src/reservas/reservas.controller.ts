@@ -5,6 +5,7 @@ import {
   Patch,
   Delete,
   Param,
+  Query,
   Body,
   Req,
   UseGuards,
@@ -33,6 +34,17 @@ export class ReservasController {
   ) {
     const authUser = (req as any).user;
     return this.reservasService.reservar(id, dto, authUser);
+  }
+
+  /**
+   * Consulta pública de reservas por criterio (código, teléfono o correo).
+   * Usado por la pantalla pública /mis-reservas sin necesidad de login.
+   */
+  @Get('reservas/consultar')
+  async consultarPublicas(@Query('criterio') criterio: string) {
+    return {
+      reservas: await this.reservasService.consultarPublicas(criterio || ''),
+    };
   }
 
   /**

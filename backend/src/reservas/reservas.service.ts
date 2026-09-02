@@ -344,6 +344,74 @@ export class ReservasService {
     };
   }
 
+  async consultarPublicas(criterio: string) {
+    if (!criterio || criterio.trim().length < 3) {
+      throw new BadRequestException('El criterio de búsqueda debe tener al menos 3 caracteres');
+    }
+
+    const limpio = criterio.trim();
+    const codigoQuery = limpio.toUpperCase();
+    const contactoNorm = normalizeContacto(limpio);
+    const emailQuery = limpio.toLowerCase();
+
+    const ahora = new Date();
+    const orFilters: any[] = [
+      { codigo: codigoQuery },
+      { contacto: contactoNorm },
+      { contacto: limpio },
+      { email: emailQuery },
+    ];
+
+    if (contactoNorm !== limpio) {
+      orFilters.push({ email: contactoNorm });
+    }
+
+    const reservas = await this.prisma.reserva.findMany({
+      where: {
+        OR: orFilters,
+      },
+      include: {
+        items: { include: { tipoEntrada: true } },
+        funcion: { include: { pelicula: true } },
+      },
+      orderBy: { funcion: { fechaHora: 'desc' } },
+      take: 20,
+    });
+
+    return reservas.map((reserva) => {
+      const estadoEfectivo = getEstadoEfectivo(reserva, ahora);
+      return {
+        id: reserva.id,
+        codigo: reserva.codigo,
+        estado: estadoEfectivo,
+        estadoOriginal: reserva.estado,
+        expiraEn: reserva.expiraEn,
+        nombre: reserva.nombre,
+        contacto: reserva.contacto,
+        email: reserva.email,
+        cantidad: reserva.cantidad,
+        total: reserva.total,
+        confirmadoEn: reserva.confirmadoEn,
+        createdAt: reserva.createdAt,
+        items: reserva.items.map((i) => ({
+          tipoEntrada: i.tipoEntrada.nombre,
+          cantidad: i.cantidad,
+          precioUnitario: i.precioUnitario,
+          subtotal: i.subtotal,
+        })),
+        funcion: {
+          id: reserva.funcion.id,
+          fechaHora: reserva.funcion.fechaHora,
+          pelicula: {
+            titulo: reserva.funcion.pelicula.titulo,
+            posterUrl: reserva.funcion.pelicula.posterUrl,
+            duracionMin: reserva.funcion.pelicula.duracionMin,
+          },
+        },
+      };
+    });
+  }
+
   async confirmarPago(reservaId: string, adminSub: string) {
     const reserva = await this.prisma.reserva.findUnique({
       where: { id: reservaId },

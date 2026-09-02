@@ -145,10 +145,17 @@ export function Header() {
                 <span className="absolute bottom-[-18px] left-0 h-[2px] w-full bg-[#E8B86A]" />
               )}
             </Link>
-          ) : (
+          ) : user?.role === "cliente" ? (
             <Link href="/dashboard" className={linkClass("/dashboard")}>
               Mis Reservas
               {isActive("/dashboard") && (
+                <span className="absolute bottom-[-18px] left-0 h-[2px] w-full bg-[#E8B86A]" />
+              )}
+            </Link>
+          ) : (
+            <Link href="/mis-reservas" className={linkClass("/mis-reservas")}>
+              Mis Reservas
+              {isActive("/mis-reservas") && (
                 <span className="absolute bottom-[-18px] left-0 h-[2px] w-full bg-[#E8B86A]" />
               )}
             </Link>
@@ -257,12 +264,22 @@ export function Header() {
             >
               ⚙️ Ir al Panel Admin
             </Link>
-          ) : (
+          ) : user?.role === "cliente" ? (
             <Link
               href="/dashboard"
               onClick={() => setMobileMenuOpen(false)}
               className={`block rounded-lg px-3 py-2 text-sm font-medium ${
                 isActive("/dashboard") ? "bg-[#E8B86A]/10 text-[#E8B86A] font-bold" : "text-white/80"
+              }`}
+            >
+              🎟️ Mis Reservas
+            </Link>
+          ) : (
+            <Link
+              href="/mis-reservas"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block rounded-lg px-3 py-2 text-sm font-medium ${
+                isActive("/mis-reservas") ? "bg-[#E8B86A]/10 text-[#E8B86A] font-bold" : "text-white/80"
               }`}
             >
               🎟️ Mis Reservas
