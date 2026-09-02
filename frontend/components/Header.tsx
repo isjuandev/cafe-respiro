@@ -138,12 +138,21 @@ export function Header() {
               <span className="absolute bottom-[-18px] left-0 h-[2px] w-full bg-[#E8B86A]" />
             )}
           </Link>
-          <Link href="/dashboard" className={linkClass("/dashboard")}>
-            Mis Reservas
-            {isActive("/dashboard") && (
-              <span className="absolute bottom-[-18px] left-0 h-[2px] w-full bg-[#E8B86A]" />
-            )}
-          </Link>
+          {user?.role === "admin" ? (
+            <Link href="/admin" className={linkClass("/admin")}>
+              Ir al Panel
+              {isActive("/admin") && (
+                <span className="absolute bottom-[-18px] left-0 h-[2px] w-full bg-[#E8B86A]" />
+              )}
+            </Link>
+          ) : (
+            <Link href="/dashboard" className={linkClass("/dashboard")}>
+              Mis Reservas
+              {isActive("/dashboard") && (
+                <span className="absolute bottom-[-18px] left-0 h-[2px] w-full bg-[#E8B86A]" />
+              )}
+            </Link>
+          )}
         </nav>
 
         {/* User / Action Buttons */}
@@ -153,11 +162,13 @@ export function Header() {
               <Link
                 href={user.role === "admin" ? "/admin" : "/dashboard"}
                 className="flex items-center gap-2 rounded-xl border border-[#E8B86A]/30 bg-[#E8B86A]/10 px-3.5 py-1.5 text-xs font-bold text-[#E8B86A] hover:bg-[#E8B86A]/20 transition-colors"
-                title={user.contacto || "Mi cuenta"}
+                title={user.role === "admin" ? "Panel Administrador" : (user.contacto || "Mi cuenta")}
               >
                 <FaUserCircle className="text-sm" />
                 <span className="hidden sm:inline max-w-[130px] truncate">
-                  {user.nombre?.split(" ")[0] || user.contacto?.split("@")[0] || "Mi cuenta"}
+                  {user.role === "admin"
+                    ? "Admin"
+                    : user.nombre?.split(" ")[0] || user.contacto?.split("@")[0] || "Mi cuenta"}
                 </span>
               </Link>
               <button
@@ -236,15 +247,27 @@ export function Header() {
           >
             ☕ Menú de Especialidad
           </Link>
-          <Link
-            href="/dashboard"
-            onClick={() => setMobileMenuOpen(false)}
-            className={`block rounded-lg px-3 py-2 text-sm font-medium ${
-              isActive("/dashboard") ? "bg-[#E8B86A]/10 text-[#E8B86A] font-bold" : "text-white/80"
-            }`}
-          >
-            🎟️ Mis Reservas
-          </Link>
+          {user?.role === "admin" ? (
+            <Link
+              href="/admin"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block rounded-lg px-3 py-2 text-sm font-medium ${
+                isActive("/admin") ? "bg-[#E8B86A]/10 text-[#E8B86A] font-bold" : "text-white/80"
+              }`}
+            >
+              ⚙️ Ir al Panel Admin
+            </Link>
+          ) : (
+            <Link
+              href="/dashboard"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block rounded-lg px-3 py-2 text-sm font-medium ${
+                isActive("/dashboard") ? "bg-[#E8B86A]/10 text-[#E8B86A] font-bold" : "text-white/80"
+              }`}
+            >
+              🎟️ Mis Reservas
+            </Link>
+          )}
         </div>
       )}
     </header>

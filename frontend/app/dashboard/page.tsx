@@ -78,6 +78,15 @@ export default function DashboardPage() {
         fetch("/api/mis-reservas", { credentials: "include" }),
       ]);
 
+      if (authRes.ok) {
+        const authData = await authRes.json();
+        if (authData.user?.role === "admin") {
+          window.location.href = "/admin";
+          return;
+        }
+        setUser(authData.user || null);
+      }
+
       if (resRes.status === 401 || resRes.status === 403 || authRes.status === 401) {
         window.location.href = "/login";
         return;
@@ -85,11 +94,6 @@ export default function DashboardPage() {
 
       if (!resRes.ok) {
         throw new Error("No se pudieron cargar tus reservas activas");
-      }
-
-      if (authRes.ok) {
-        const authData = await authRes.json();
-        setUser(authData.user || null);
       }
 
       const resData = await resRes.json();
