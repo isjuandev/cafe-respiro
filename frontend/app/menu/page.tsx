@@ -279,11 +279,11 @@ export default function MenuPage() {
                     return (
                       <article
                         key={item.id}
-                        className="group flex flex-col justify-between overflow-hidden rounded-3xl border border-white/[0.08] bg-[#0E0E12] transition-all duration-300 hover:-translate-y-1 hover:border-[#E8B86A]/40 hover:shadow-2xl hover:shadow-[#E8B86A]/10"
+                        className="group flex flex-col justify-between overflow-hidden rounded-3xl border border-white/[0.08] bg-[#0E0E12] transition-colors duration-300 hover:border-[#E8B86A]/50 hover:shadow-xl hover:shadow-[#E8B86A]/5 [transform:translateZ(0)]"
                       >
                         {/* Contenedor Superior: Imagen & Badges */}
                         <div>
-                          <div className="relative aspect-[16/10] w-full overflow-hidden bg-black/60">
+                          <div className="relative aspect-[16/10] w-full overflow-hidden rounded-t-3xl bg-black/60 [transform:translateZ(0)]">
                             <img
                               src={imgSrc}
                               alt={item.nombre}
@@ -293,10 +293,10 @@ export default function MenuPage() {
                               }}
                             />
                             {/* Overlay degradado sutil */}
-                            <div className="absolute inset-0 bg-gradient-to-t from-[#0E0E12] via-transparent to-black/30" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-[#0E0E12] via-transparent to-black/30 pointer-events-none" />
 
                             {/* Badge de Precio */}
-                            <div className="absolute top-3 right-3">
+                            <div className="absolute top-3 right-3 pointer-events-none">
                               <span className="rounded-full bg-black/90 px-3 py-1 text-xs font-black text-[#E8B86A] border border-[#E8B86A]/30">
                                 {moneyFormatter.format(item.precio)}
                               </span>
@@ -304,24 +304,14 @@ export default function MenuPage() {
                           </div>
 
                           {/* Cuerpo de la Tarjeta */}
-                          <div className="p-5">
+                          <div className="p-5 pb-6">
                             <h3 className="text-base font-bold text-white group-hover:text-[#E8B86A] transition-colors font-serif tracking-tight">
                               {item.nombre}
                             </h3>
 
-                            <p className="mt-2 text-xs leading-relaxed text-white/60 line-clamp-3 min-h-[2.5rem]">
+                            <p className="mt-2 text-xs leading-relaxed text-white/60 line-clamp-3">
                               {item.descripcion || "Preparación fresca y artesanal servida en barra o en mesa."}
                             </p>
-                          </div>
-                        </div>
-
-                        {/* Pie de Tarjeta */}
-                        <div className="px-5 pb-5 pt-0">
-                          <div className="flex items-center justify-between border-t border-white/5 pt-3 text-[11px] text-white/40">
-                            <span className="flex items-center gap-1 text-[#E8B86A]/80">
-                              <FaStar className="text-[9px]" /> Respiro Especial
-                            </span>
-                            <span>Barra & Sala</span>
                           </div>
                         </div>
                       </article>
